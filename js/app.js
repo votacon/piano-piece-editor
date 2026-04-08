@@ -1,6 +1,7 @@
 // app.js — Bootstrap, orchestration, toolbar wiring, keyboard shortcuts
 import { createScore, cloneScore } from './score-model.js';
-import { renderScore, getNoteElementMap } from './renderer.js';
+import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } from './renderer.js';
+import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition } from './playback.js';
 import {
   initEditor, getEditorState, setDuration, toggleAccidental,
   toggleRestMode, toggleDynamics, handleScoreClick,
@@ -28,10 +29,11 @@ function render() {
 function syncHeader() {
   const titleEl = document.getElementById('score-title');
   const composerEl = document.getElementById('score-composer');
-  if (titleEl.textContent !== state.score.title) {
+  const active = document.activeElement;
+  if (active !== titleEl && titleEl.textContent !== state.score.title) {
     titleEl.textContent = state.score.title;
   }
-  if (composerEl.textContent !== state.score.composer) {
+  if (active !== composerEl && composerEl.textContent !== state.score.composer) {
     composerEl.textContent = state.score.composer;
   }
   document.getElementById('bpm-input').value = state.score.tempo;
@@ -237,7 +239,62 @@ function setupKeyboard() {
 }
 
 function togglePlayback() {
-  console.log('Playback toggle — not yet implemented');
+  const container = document.getElementById('score-container');
+  if (getIsPlaying()) {
+    stopPlayback();
+    state.isPlaying = false;
+    updatePlayButton(false);
+  } else {
+    state.isPlaying = true;
+    updatePlayButton(true);
+    startPlayback(state.score, container);
+  }
+}
+
+function updatePlayButton(playing) {
+  const btn = document.getElementById('btn-play');
+  if (!btn) return;
+  if (playing) {
+    btn.textContent = 'Pause';
+    btn.classList.add('active');
+  } else {
+    btn.textContent = 'Play';
+    btn.classList.remove('active');
+  }
+}
+
+function setupPlayback() {
+  document.getElementById('btn-play').addEventListener('click', togglePlayback);
+  document.getElementById('btn-stop').addEventListener('click', () => {
+    stopPlayback();
+    state.isPlaying = false;
+    updatePlayButton(false);
+  });
+
+  initPlayback({
+    onProgress(progress, currentEvent) {
+      // Update progress bar if present
+      const progressBar = document.getElementById('progress-bar');
+      if (progressBar) {
+        progressBar.value = progress;
+      }
+
+      // Move visual cursor to match the current note
+      const bb = getNoteBoundingBox(
+        currentEvent.staffIndex,
+        currentEvent.measureIndex,
+        currentEvent.noteIndex
+      );
+      const sb = getStaveBounds(currentEvent.staffIndex, currentEvent.measureIndex);
+      if (bb && sb) {
+        setCursorPosition(bb.x, sb.y, sb.height);
+      }
+    },
+    onEnd() {
+      state.isPlaying = false;
+      updatePlayButton(false);
+    },
+  });
 }
 
 function setupFileActions() {
@@ -291,6 +348,7 @@ function init() {
   setupScoreClick();
   setupKeyboard();
   setupFileActions();
+  setupPlayback();
 
   render();
   console.log('Piano Piece Editor initialized');
