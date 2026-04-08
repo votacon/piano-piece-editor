@@ -360,12 +360,20 @@ export function handleScoreClick(event, noteElementMap) {
       const my    = coords.my;
       const clef  = score.staves[hit.staffIndex].clef;
       const key   = _yToKeyFromStave(my, hit.stave, clef);
-      const note  = _buildNoteFromState(key);
+
+      // Use the rest's own duration so the replacement always fits
+      const { name, octave } = parseKey(key);
+      const acc = editorState.currentAccidental;
+      const fullKey = buildKey(name, acc, octave);
+      const options = {};
+      if (acc) options.accidental = acc;
+      if (editorState.currentDynamics) options.dynamics = editorState.currentDynamics;
+      const note = createNote([fullKey], hitNote.duration, options);
 
       _pushUndoIfAvailable();
 
-      const added = addNote(score, hit.staffIndex, hit.measureIndex, hit.noteIndex, note);
-      if (added) {
+      const replaced = replaceNote(score, hit.staffIndex, hit.measureIndex, hit.noteIndex, note);
+      if (replaced) {
         setSelection([{
           staffIndex:   hit.staffIndex,
           measureIndex: hit.measureIndex,

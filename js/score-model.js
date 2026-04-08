@@ -210,13 +210,39 @@ export function removeNote(score, staffIndex, measureIndex, noteIndex) {
   const measure = staff.measures[measureIndex];
   if (noteIndex < 0 || noteIndex >= measure.notes.length) return false;
 
-  measure.notes.splice(noteIndex, 1);
+  const removed = measure.notes[noteIndex];
 
-  if (measure.notes.length === 0) {
-    measure.notes = [createRest('w')];
-  }
+  // Replace the note with a rest of the same duration (preserves measure timing)
+  measure.notes[noteIndex] = createRest(removed.duration);
+
+  // Merge adjacent rests into larger rests where possible
+  _mergeAdjacentRests(measure, score.timeSignature.beats);
 
   return true;
+}
+
+function _mergeAdjacentRests(measure, totalBeats) {
+  // If all notes are rests, simplify to a single whole rest
+  if (measure.notes.every(n => n.type === 'rest')) {
+    measure.notes = [createRest('w')];
+    return;
+  }
+
+  // Merge consecutive rests into the largest possible rest values
+  let i = 0;
+  while (i < measure.notes.length - 1) {
+    if (measure.notes[i].type === 'rest' && measure.notes[i + 1].type === 'rest') {
+      const combined = (DURATION_VALUES[measure.notes[i].duration] || 0) +
+                       (DURATION_VALUES[measure.notes[i + 1].duration] || 0);
+      // Find the largest single rest that fits
+      const bestDur = ['w', 'h', 'q', '8', '16'].find(d => Math.abs(DURATION_VALUES[d] - combined) < 0.001);
+      if (bestDur) {
+        measure.notes.splice(i, 2, createRest(bestDur));
+        continue; // check again at same index
+      }
+    }
+    i++;
+  }
 }
 
 export function addMeasure(score) {
