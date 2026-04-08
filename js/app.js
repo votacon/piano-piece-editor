@@ -74,6 +74,11 @@ function syncToolbar() {
   });
   document.getElementById('btn-undo').disabled = !canUndo();
   document.getElementById('btn-redo').disabled = !canRedo();
+
+  const statusOctave = document.getElementById('status-octave');
+  if (statusOctave) statusOctave.textContent = 'Oct ' + es.currentOctave;
+  const statusStaff = document.getElementById('status-staff');
+  if (statusStaff) statusStaff.textContent = es.currentStaff === 0 ? 'Treble' : 'Bass';
 }
 
 function pushUndo() {
@@ -592,12 +597,14 @@ function setupKeyboard() {
       e.preventDefault();
       if (hasSel) changeOctaveOfSelected(1);
       changeOctave(1);
+      syncToolbar();
       return;
     }
     if (shift && !ctrl && !alt && key === 'ArrowDown') {
       e.preventDefault();
       if (hasSel) changeOctaveOfSelected(-1);
       changeOctave(-1);
+      syncToolbar();
       return;
     }
 
@@ -644,6 +651,7 @@ function setupKeyboard() {
     if (key === 'Tab') {
       e.preventDefault();
       switchStaff();
+      syncToolbar();
       return;
     }
   });

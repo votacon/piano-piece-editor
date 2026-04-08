@@ -129,6 +129,26 @@ html, body {
   font-family: 'Times New Roman', Times, serif;
 }
 
+.status-label {
+  color: #9ca3af;
+  font-size: 0.8rem;
+  padding: 4px 8px;
+  border: 1px solid #2a2a4e;
+  border-radius: 4px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  user-select: none;
+}
+
+.status-octave {
+  color: #7c9fdb;
+  background: #1a1a3e;
+  border-color: #3a3a6e;
+  min-width: 44px;
+  text-align: center;
+  display: inline-block;
+}
+
 /* --- Zone 3: Score Area --- */
 #score-area {
   flex: 1;
