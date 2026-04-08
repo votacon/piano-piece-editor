@@ -1,29 +1,28 @@
 // app.js — Bootstrap and orchestration
-// Verify VexFlow loaded from CDN
-const VF = Vex.Flow;
-console.log('VexFlow loaded:', typeof VF !== 'undefined');
-console.log('VexFlow classes available:', Object.keys(VF).slice(0, 10).join(', '), '...');
+import { createScore } from './score-model.js';
+import { renderScore } from './renderer.js';
 
-// Quick rendering test
-const div = document.getElementById('score-container');
-const renderer = new VF.Renderer(div, VF.Renderer.Backends.SVG);
-renderer.resize(800, 200);
-const context = renderer.getContext();
+const state = {
+  score: null,
+  selection: null,
+};
 
-const trebleStave = new VF.Stave(10, 20, 780);
-trebleStave.addClef('treble').addTimeSignature('4/4').addKeySignature('C');
-trebleStave.setContext(context).draw();
+function init() {
+  state.score = createScore({ title: 'Untitled', composer: 'Composer', measures: 4 });
+  render();
+  console.log('Piano Piece Editor initialized');
+}
 
-const bassStave = new VF.Stave(10, 120, 780);
-bassStave.addClef('bass').addTimeSignature('4/4').addKeySignature('C');
-bassStave.setContext(context).draw();
+function render() {
+  const container = document.getElementById('score-container');
+  renderScore(state.score, container, state.selection);
 
-const connector = new VF.StaveConnector(trebleStave, bassStave);
-connector.setType(VF.StaveConnector.type.BRACE);
-connector.setContext(context).draw();
+  document.getElementById('score-title').textContent = state.score.title;
+  document.getElementById('score-composer').textContent = state.score.composer;
+  document.getElementById('bpm-input').value = state.score.tempo;
+}
 
-const lineConnector = new VF.StaveConnector(trebleStave, bassStave);
-lineConnector.setType(VF.StaveConnector.type.SINGLE_LEFT);
-lineConnector.setContext(context).draw();
+window._appState = state;
+window._render = render;
 
-console.log('Scaffolding test: grand staff rendered successfully');
+document.addEventListener('DOMContentLoaded', init);
