@@ -6,7 +6,7 @@ import {
   initEditor, getEditorState, setDuration, toggleAccidental,
   toggleRestMode, toggleDynamics, handleScoreClick,
   insertNoteByKey, deleteSelectedNote, navigateSelection,
-  changeOctave, toggleTie, switchStaff
+  changeOctave, toggleTie, switchStaff, getGhostNoteInfo
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
 import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
@@ -136,10 +136,54 @@ function setupToolbar() {
 }
 
 function setupScoreClick() {
-  document.getElementById('score-container').addEventListener('click', (e) => {
+  const container = document.getElementById('score-container');
+
+  container.addEventListener('click', (e) => {
     if (state.isPlaying) return;
     handleScoreClick(e, getNoteElementMap());
   });
+
+  // Ghost note preview
+  let ghostEl = null;
+  let ghostLabel = null;
+
+  function ensureGhostEl() {
+    // Re-create if removed by render (innerHTML = '')
+    if (!ghostEl || !ghostEl.parentNode) {
+      ghostEl = document.createElement('div');
+      ghostEl.className = 'ghost-note';
+      ghostLabel = document.createElement('span');
+      ghostLabel.className = 'ghost-note-label';
+      ghostEl.appendChild(ghostLabel);
+      container.appendChild(ghostEl);
+    }
+  }
+
+  container.addEventListener('mousemove', (e) => {
+    if (state.isPlaying) { hideGhost(); return; }
+
+    const info = getGhostNoteInfo(e, getNoteElementMap());
+    if (!info) { hideGhost(); return; }
+
+    ensureGhostEl();
+    ghostEl.style.left = (info.x - 6) + 'px';
+    ghostEl.style.top = (info.snapY - 5) + 'px';
+    ghostEl.style.display = 'block';
+
+    // Show note name (e.g. "C4", "F#5")
+    const es = getEditorState();
+    const parts = info.key.split('/');
+    const noteName = parts[0].toUpperCase();
+    const octave = parts[1];
+    const acc = es.currentAccidental === '#' ? '#' : es.currentAccidental === 'b' ? 'b' : '';
+    ghostLabel.textContent = noteName + acc + octave;
+  });
+
+  container.addEventListener('mouseleave', hideGhost);
+
+  function hideGhost() {
+    if (ghostEl) ghostEl.style.display = 'none';
+  }
 }
 
 function setupKeyboard() {

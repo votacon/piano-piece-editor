@@ -201,8 +201,27 @@ html, body {
 
 /* Ghost note preview on hover */
 .ghost-note {
-  opacity: 0.3;
+  position: absolute;
+  display: none;
   pointer-events: none;
+  z-index: 5;
+  width: 12px;
+  height: 10px;
+  background: #2563eb;
+  border-radius: 50%;
+  opacity: 0.45;
+}
+
+.ghost-note-label {
+  position: absolute;
+  left: 16px;
+  top: -4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #2563eb;
+  white-space: nowrap;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  opacity: 1;
 }
 
 /* --- Zone 4: Playback Bar --- */

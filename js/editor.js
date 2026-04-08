@@ -136,13 +136,25 @@ function _buildNoteFromState(key) {
  * @param {Array}      noteElementMap  Array of {staffIndex, measureIndex, noteIndex, staveNote, stave}
  * @returns {object|null}
  */
-function _hitTest(event, noteElementMap) {
-  const svgEl = event.currentTarget;
-  if (!svgEl) return null;
+/**
+ * Get mouse coordinates relative to the SVG element inside the container.
+ * The SVG may be centered with margin:auto, so we must use its rect, not the container's.
+ */
+function _svgCoords(event) {
+  const container = event.currentTarget;
+  const svg = container && container.querySelector('svg');
+  if (!svg) return null;
+  const rect = svg.getBoundingClientRect();
+  return {
+    mx: event.clientX - rect.left,
+    my: event.clientY - rect.top,
+  };
+}
 
-  const rect = svgEl.getBoundingClientRect();
-  const mx = event.clientX - rect.left;
-  const my = event.clientY - rect.top;
+function _hitTest(event, noteElementMap) {
+  const coords = _svgCoords(event);
+  if (!coords) return null;
+  const { mx, my } = coords;
 
   // First pass: exact bounding-box hit
   for (const entry of noteElementMap) {
@@ -194,12 +206,90 @@ function _hitTest(event, noteElementMap) {
  * @returns {string}            e.g. 'e/4'
  */
 function _yToKeyFromStave(my, stave, clef) {
-  const staveY = stave.getY();
-  // VexFlow staff top line is 5px above the stave y coordinate
-  const topLineY = staveY + 1;
-  const lineSpacing = 10;
+  const topLineY = stave.getYForLine(0);
+  const lineSpacing = stave.getSpacingBetweenLines();
   const yOnStaff = my - topLineY;
   return yToKey(yOnStaff, clef, lineSpacing);
+}
+
+/**
+ * Compute ghost-note preview info from a mouse position over the score SVG.
+ * Returns null if the mouse is not close enough to any stave.
+ *
+ * @param {MouseEvent} event
+ * @param {Array}      noteElementMap
+ * @returns {{ x: number, snapY: number, key: string, staffIndex: number, staveHeight: number }|null}
+ */
+export function getGhostNoteInfo(event, noteElementMap) {
+  if (!getScore) return null;
+
+  const container = event.currentTarget;
+  const svg = container && container.querySelector('svg');
+  if (!svg) return null;
+
+  const containerRect = container.getBoundingClientRect();
+  const svgRect = svg.getBoundingClientRect();
+  // Offset from container origin to SVG origin (accounts for centering margin)
+  const svgOffsetX = svgRect.left - containerRect.left;
+  const svgOffsetY = svgRect.top - containerRect.top;
+
+  const mx = event.clientX - svgRect.left;
+  const my = event.clientY - svgRect.top;
+
+  // Find the closest stave to the mouse
+  let closestStave = null;
+  let closestStaffIndex = null;
+  let bestDist = Infinity;
+  const seen = new Set();
+
+  for (const entry of noteElementMap) {
+    if (!entry.stave) continue;
+    const key = `${entry.staffIndex}-${entry.measureIndex}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const staveX = entry.stave.getX();
+    const staveW = entry.stave.getWidth();
+    const topLine = entry.stave.getYForLine(0);
+    const botLine = entry.stave.getYForLine(4);
+
+    // Horizontal: must be within stave bounds
+    if (mx < staveX || mx > staveX + staveW) continue;
+
+    // Vertical distance from the staff line area (with some margin for ledger lines)
+    const margin = 20;
+    const staveCenter = (topLine + botLine) / 2;
+    const dist = Math.abs(my - staveCenter);
+
+    if (dist < bestDist) {
+      bestDist = dist;
+      closestStave = entry.stave;
+      closestStaffIndex = entry.staffIndex;
+    }
+  }
+
+  if (!closestStave || bestDist > 80) return null;
+
+  const score = getScore();
+  const clef = score.staves[closestStaffIndex].clef;
+  const topLineY = closestStave.getYForLine(0);
+  const lineSpacing = closestStave.getSpacingBetweenLines();
+  const halfSpace = lineSpacing / 2;
+
+  // Snap Y to nearest half-space position
+  const yOnStaff = my - topLineY;
+  const steps = Math.round(yOnStaff / halfSpace);
+  const snapY = topLineY + steps * halfSpace;
+
+  const noteKey = yToKey(yOnStaff, clef, lineSpacing);
+
+  return {
+    x: mx + svgOffsetX,
+    snapY: snapY + svgOffsetY,
+    key: noteKey,
+    staffIndex: closestStaffIndex,
+    staveHeight: lineSpacing,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -229,9 +319,9 @@ export function handleScoreClick(event, noteElementMap) {
 
     // If a rest is clicked, replace it with a note at the clicked pitch
     if (hitNote && hitNote.type === 'rest') {
-      const svgEl = event.currentTarget;
-      const rect  = svgEl.getBoundingClientRect();
-      const my    = event.clientY - rect.top;
+      const coords = _svgCoords(event);
+      if (!coords) return;
+      const my    = coords.my;
       const clef  = score.staves[hit.staffIndex].clef;
       const key   = _yToKeyFromStave(my, hit.stave, clef);
       const note  = _buildNoteFromState(key);
@@ -261,13 +351,9 @@ export function handleScoreClick(event, noteElementMap) {
   }
 
   // No direct hit — try to insert at the click position
-  // Determine which stave (treble / bass) the click landed in
-  const svgEl = event.currentTarget;
-  if (!svgEl) return;
-
-  const rect = svgEl.getBoundingClientRect();
-  const my   = event.clientY - rect.top;
-  const mx   = event.clientX - rect.left;
+  const coords = _svgCoords(event);
+  if (!coords) return;
+  const { mx, my } = coords;
 
   // Find the stave that contains the click (horizontally AND vertically)
   let closestStaff    = null;
