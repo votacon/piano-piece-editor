@@ -408,22 +408,29 @@ function setupKeyboard() {
       return;
     }
 
-    // Ctrl+D — duplicate selection
+    // Ctrl+D / Cmd+D — duplicate selection
     if (ctrl && !shift && key === 'd') {
       e.preventDefault();
       duplicateSelection();
       return;
     }
 
-    // Ctrl+. — repeat last action
+    // Ctrl+. / Cmd+. — repeat last action
     if (ctrl && key === '.') {
       e.preventDefault();
       repeatLastAction();
       return;
     }
 
-    // Ctrl+Shift+M — select entire measure
+    // Ctrl+Shift+M / Cmd+Shift+M — select entire measure
     if (ctrl && shift && (key === 'M' || key === 'm')) {
+      e.preventDefault();
+      selectMeasure();
+      return;
+    }
+
+    // Q — select entire measure (Mac-friendly alternative to Ctrl+Shift+M)
+    if (!ctrl && !shift && !alt && key === 'q') {
       e.preventDefault();
       selectMeasure();
       return;
@@ -534,13 +541,23 @@ function setupKeyboard() {
       return;
     }
 
-    // Ctrl+Arrow Left/Right — jump between measures
+    // Ctrl+Arrow Left/Right or [ / ] — jump between measures
     if (ctrl && !shift && key === 'ArrowLeft') {
       e.preventDefault();
       navigateToMeasure('left');
       return;
     }
     if (ctrl && !shift && key === 'ArrowRight') {
+      e.preventDefault();
+      navigateToMeasure('right');
+      return;
+    }
+    if (!ctrl && !shift && !alt && key === '[') {
+      e.preventDefault();
+      navigateToMeasure('left');
+      return;
+    }
+    if (!ctrl && !shift && !alt && key === ']') {
       e.preventDefault();
       navigateToMeasure('right');
       return;
@@ -584,7 +601,17 @@ function setupKeyboard() {
       return;
     }
 
-    // Home/End — jump to start/end of staff
+    // Home/End or Cmd+Up/Down — jump to start/end of staff
+    if (ctrl && !shift && key === 'ArrowUp') {
+      e.preventDefault();
+      navigateToStart();
+      return;
+    }
+    if (ctrl && !shift && key === 'ArrowDown') {
+      e.preventDefault();
+      navigateToEnd();
+      return;
+    }
     if (key === 'Home') {
       e.preventDefault();
       navigateToStart();
