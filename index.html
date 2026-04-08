@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Piano Piece Editor</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
+</head>
+<body>
+  <div id="app">
+
+    <!-- Zone 1: Top Bar -->
+    <header id="top-bar">
+      <div class="app-title">Piano Piece Editor</div>
+      <div class="file-actions">
+        <button id="btn-new" class="bar-btn" title="New Score">New</button>
+        <button id="btn-save" class="bar-btn" title="Save">Save</button>
+        <button id="btn-load" class="bar-btn" title="Load">Load</button>
+        <button id="btn-export" class="bar-btn" title="Export JSON">Export</button>
+      </div>
+    </header>
+
+    <!-- Zone 2: Toolbar -->
+    <div id="toolbar">
+      <!-- Duration group -->
+      <div class="tool-group">
+        <span class="tool-label">DURATION:</span>
+        <button class="tool-btn duration-btn active" data-duration="w" title="Whole (1)">&#119133;</button>
+        <button class="tool-btn duration-btn" data-duration="h" title="Half (2)">&#119134;</button>
+        <button class="tool-btn duration-btn" data-duration="q" title="Quarter (3)">&#119135;</button>
+        <button class="tool-btn duration-btn" data-duration="8" title="Eighth (4)">&#119136;</button>
+        <button class="tool-btn duration-btn" data-duration="16" title="Sixteenth (5)">&#119137;</button>
+      </div>
+
+      <!-- Accidental group -->
+      <div class="tool-group">
+        <span class="tool-label">ACCIDENTAL:</span>
+        <button class="tool-btn accidental-btn" data-accidental="#" title="Sharp (S)">&#9839;</button>
+        <button class="tool-btn accidental-btn" data-accidental="b" title="Flat (F)">&#9837;</button>
+        <button class="tool-btn accidental-btn" data-accidental="n" title="Natural">&#9838;</button>
+      </div>
+
+      <!-- Rest toggle -->
+      <div class="tool-group">
+        <span class="tool-label">REST:</span>
+        <button class="tool-btn" id="btn-rest" title="Rest (R)">&#119102;</button>
+      </div>
+
+      <!-- Dynamics group -->
+      <div class="tool-group">
+        <span class="tool-label">DYNAMICS:</span>
+        <button class="tool-btn dynamics-btn" data-dynamics="pp">pp</button>
+        <button class="tool-btn dynamics-btn" data-dynamics="p">p</button>
+        <button class="tool-btn dynamics-btn" data-dynamics="mp">mp</button>
+        <button class="tool-btn dynamics-btn" data-dynamics="mf">mf</button>
+        <button class="tool-btn dynamics-btn" data-dynamics="f">f</button>
+        <button class="tool-btn dynamics-btn" data-dynamics="ff">ff</button>
+      </div>
+
+      <!-- Tie -->
+      <div class="tool-group">
+        <button class="tool-btn" id="btn-tie" title="Tie (T)">Tie</button>
+      </div>
+
+      <!-- Undo/Redo -->
+      <div class="tool-group tool-group-right">
+        <button class="tool-btn" id="btn-undo" title="Undo (Cmd+Z)">&#8617; Undo</button>
+        <button class="tool-btn" id="btn-redo" title="Redo (Cmd+Shift+Z)">&#8618; Redo</button>
+      </div>
+    </div>
+
+    <!-- Zone 3: Score Area -->
+    <div id="score-area">
+      <div id="score-header">
+        <div id="score-title" contenteditable="true" spellcheck="false">Untitled</div>
+        <div id="score-composer" contenteditable="true" spellcheck="false">Composer</div>
+      </div>
+      <div id="score-container"></div>
+    </div>
+
+    <!-- Zone 4: Playback Bar -->
+    <div id="playback-bar">
+      <button id="btn-play" class="playback-btn play-btn" title="Play (Space)">&#9654; Play</button>
+      <button id="btn-stop" class="playback-btn" title="Stop">&#9632; Stop</button>
+      <div id="progress-bar">
+        <div id="progress-fill"></div>
+      </div>
+      <label class="bpm-control">
+        <span>BPM:</span>
+        <input type="number" id="bpm-input" min="20" max="300" value="120" step="1">
+      </label>
+    </div>
+
+  </div>
+
+  <!-- Load dialog (hidden by default) -->
+  <dialog id="load-dialog">
+    <h3>Load Score</h3>
+    <ul id="saved-scores-list"></ul>
+    <div class="dialog-actions">
+      <button id="load-dialog-cancel">Cancel</button>
+    </div>
+  </dialog>
+
+  <!-- New score dialog (hidden by default) -->
+  <dialog id="new-dialog">
+    <h3>New Score</h3>
+    <div class="dialog-field">
+      <label>Title: <input type="text" id="new-title" value="Untitled"></label>
+    </div>
+    <div class="dialog-field">
+      <label>Composer: <input type="text" id="new-composer" value="Composer"></label>
+    </div>
+    <div class="dialog-field">
+      <label>Time Signature:
+        <select id="new-time-sig">
+          <option value="4/4" selected>4/4</option>
+          <option value="3/4">3/4</option>
+          <option value="2/4">2/4</option>
+          <option value="6/8">6/8</option>
+        </select>
+      </label>
+    </div>
+    <div class="dialog-field">
+      <label>Key:
+        <select id="new-key-sig">
+          <option value="C" selected>C Major</option>
+          <option value="G">G Major</option>
+          <option value="D">D Major</option>
+          <option value="F">F Major</option>
+          <option value="Bb">Bb Major</option>
+          <option value="Eb">Eb Major</option>
+          <option value="A">A Major</option>
+          <option value="E">E Major</option>
+        </select>
+      </label>
+    </div>
+    <div class="dialog-field">
+      <label>BPM: <input type="number" id="new-bpm" value="120" min="20" max="300"></label>
+    </div>
+    <div class="dialog-field">
+      <label>Measures: <input type="number" id="new-measures" value="4" min="1" max="64"></label>
+    </div>
+    <div class="dialog-actions">
+      <button id="new-dialog-cancel">Cancel</button>
+      <button id="new-dialog-create">Create</button>
+    </div>
+  </dialog>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
