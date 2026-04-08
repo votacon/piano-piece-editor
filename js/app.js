@@ -9,16 +9,13 @@ import {
   changeOctave, toggleTie, switchStaff
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
+import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
 
 const state = {
   score: null,
   selection: null,
-  undoStack: [],
-  redoStack: [],
   isPlaying: false,
 };
-
-const MAX_UNDO = 50;
 
 function render() {
   const container = document.getElementById('score-container');
@@ -52,26 +49,26 @@ function syncToolbar() {
   document.querySelectorAll('.dynamics-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.dynamics === es.currentDynamics);
   });
+  document.getElementById('btn-undo').disabled = !canUndo();
+  document.getElementById('btn-redo').disabled = !canRedo();
 }
 
 function pushUndo() {
-  state.undoStack.push(JSON.stringify(state.score));
-  if (state.undoStack.length > MAX_UNDO) state.undoStack.shift();
-  state.redoStack = [];
+  pushState(state.score);
 }
 
 function undo() {
-  if (state.undoStack.length === 0) return;
-  state.redoStack.push(JSON.stringify(state.score));
-  state.score = JSON.parse(state.undoStack.pop());
+  const restored = undoAction(state.score);
+  if (restored === null) return;
+  state.score = restored;
   state.selection = null;
   render();
 }
 
 function redo() {
-  if (state.redoStack.length === 0) return;
-  state.undoStack.push(JSON.stringify(state.score));
-  state.score = JSON.parse(state.redoStack.pop());
+  const restored = redoAction(state.score);
+  if (restored === null) return;
+  state.score = restored;
   state.selection = null;
   render();
 }
@@ -318,8 +315,7 @@ function setupFileActions() {
       keySignature: keySig, tempo: bpm, measures,
     });
     state.selection = null;
-    state.undoStack = [];
-    state.redoStack = [];
+    clearHistory();
     document.getElementById('new-dialog').close();
     render();
   });
@@ -370,8 +366,7 @@ function showLoadDialog() {
           delete loaded._savedAt;
           state.score = loaded;
           state.selection = null;
-          state.undoStack = [];
-          state.redoStack = [];
+          clearHistory();
           document.getElementById('load-dialog').close();
           render();
         }

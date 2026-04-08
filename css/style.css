@@ -113,6 +113,11 @@ html, body {
   border-color: #7c52b8;
 }
 
+.tool-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .dynamics-btn {
   font-style: italic;
   font-family: 'Times New Roman', Times, serif;
