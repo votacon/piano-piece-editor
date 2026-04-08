@@ -666,7 +666,15 @@ export function deleteSelectedNote() {
   }
 
   if (anyRemoved) {
-    setSelection([]);
+    // Keep selection at the position of the first deleted note (now a rest)
+    const first = sels[sels.length - 1]; // sels is sorted descending, last = earliest
+    const measure = score.staves[first.staffIndex].measures[first.measureIndex];
+    const clampedIndex = Math.min(first.noteIndex, measure.notes.length - 1);
+    setSelection([{
+      staffIndex:   first.staffIndex,
+      measureIndex: first.measureIndex,
+      noteIndex:    Math.max(0, clampedIndex),
+    }]);
     _notifyChange();
   }
 }
