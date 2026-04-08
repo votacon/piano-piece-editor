@@ -259,6 +259,92 @@ export function removeMeasure(score) {
   return true;
 }
 
+// ─── Insert with overflow cascade ────────────────────────────────────────────
+
+export function insertNoteAt(score, staffIndex, measureIndex, noteIndex, note) {
+  const staff = score.staves[staffIndex];
+  if (!staff || !staff.measures[measureIndex]) return false;
+
+  const measure = staff.measures[measureIndex];
+  const beats = score.timeSignature.beats;
+
+  // If measure has only a single whole rest, replace it
+  if (measure.notes.length === 1 &&
+      measure.notes[0].type === 'rest' &&
+      measure.notes[0].duration === 'w') {
+    measure.notes = [{ ...note, keys: [...note.keys] }];
+    fillMeasureWithRests(measure, beats);
+    return true;
+  }
+
+  // Insert the note at the specified position
+  const idx = Math.min(noteIndex, measure.notes.length);
+  measure.notes.splice(idx, 0, { ...note, keys: [...note.keys] });
+
+  // Check if measure overflows
+  if (measureDuration(measure) <= beats + 0.001) return true;
+
+  // Pop notes from the end until it fits
+  const overflow = [];
+  while (measureDuration(measure) > beats + 0.001 && measure.notes.length > 1) {
+    overflow.unshift(measure.notes.pop());
+  }
+
+  // Fill remaining space with rests
+  fillMeasureWithRests(measure, beats);
+
+  // Cascade overflow into next measure(s)
+  if (overflow.length > 0) {
+    _cascadeOverflow(score, staffIndex, measureIndex + 1, overflow);
+  }
+
+  return true;
+}
+
+function _cascadeOverflow(score, staffIndex, measureIndex, overflowNotes) {
+  const staff = score.staves[staffIndex];
+
+  // Create a new measure if we've gone past the end
+  if (measureIndex >= staff.measures.length) {
+    addMeasure(score);
+  }
+
+  const measure = staff.measures[measureIndex];
+  const beats = score.timeSignature.beats;
+
+  // Remove rests from the beginning to make space for overflow notes
+  const neededBeats = overflowNotes.reduce((sum, n) => sum + (DURATION_VALUES[n.duration] || 0), 0);
+  let freedBeats = 0;
+  while (measure.notes.length > 0 && freedBeats < neededBeats) {
+    if (measure.notes[0].type === 'rest') {
+      freedBeats += DURATION_VALUES[measure.notes[0].duration] || 0;
+      measure.notes.splice(0, 1);
+    } else {
+      break; // stop at first non-rest note
+    }
+  }
+
+  // Insert overflow notes at the beginning
+  for (let i = overflowNotes.length - 1; i >= 0; i--) {
+    measure.notes.unshift({ ...overflowNotes[i], keys: [...overflowNotes[i].keys] });
+  }
+
+  // Check if this measure now overflows too
+  if (measureDuration(measure) <= beats + 0.001) return;
+
+  // Pop notes from the end until it fits, cascade again
+  const nextOverflow = [];
+  while (measureDuration(measure) > beats + 0.001 && measure.notes.length > 1) {
+    nextOverflow.unshift(measure.notes.pop());
+  }
+
+  fillMeasureWithRests(measure, beats);
+
+  if (nextOverflow.length > 0) {
+    _cascadeOverflow(score, staffIndex, measureIndex + 1, nextOverflow);
+  }
+}
+
 export function fillMeasureWithRests(measure, totalBeats) {
   let current = measureDuration(measure);
   const sortedDurations = ['w', 'h', 'q', '8', '16'];

@@ -1,7 +1,7 @@
 // editor.js — Mouse and keyboard interaction for the score editor
 import {
   createNote, createRest, addNote, removeNote, replaceNote,
-  addKeyToNote, removeKeyFromNote,
+  addKeyToNote, removeKeyFromNote, insertNoteAt,
   DURATION_VALUES, NOTE_NAMES, parseKey, buildKey, yToKey,
   addMeasure, cloneScore, keyToMidi,
   measureDuration, fillMeasureWithRests
@@ -16,6 +16,7 @@ const editorState = {
   currentAccidental: '',
   currentDynamics: '',
   restMode: false,
+  insertMode: false,
   currentOctave: 4,
   currentStaff: 0,
 };
@@ -79,6 +80,11 @@ export function toggleAccidental(acc) {
 /** Toggle rest-input mode on/off. */
 export function toggleRestMode() {
   editorState.restMode = !editorState.restMode;
+}
+
+/** Toggle insert-before mode on/off. */
+export function toggleInsertMode() {
+  editorState.insertMode = !editorState.insertMode;
 }
 
 /**
@@ -510,14 +516,56 @@ export function insertNoteByKey(noteName) {
 
   _pushUndoIfAvailable();
 
-  const added = addNote(score, staffIndex, measureIndex, noteIndex === -1 ? -1 : noteIndex, note);
+  let added;
+  let actualIndex;
 
-  if (added) {
-    const actualIndex = noteIndex === -1
+  if (editorState.insertMode && sel) {
+    // Insert BEFORE the selected note, pushing subsequent notes right
+    added = insertNoteAt(score, staffIndex, measureIndex, sel.noteIndex, note);
+    actualIndex = sel.noteIndex;
+  } else {
+    added = addNote(score, staffIndex, measureIndex, noteIndex === -1 ? -1 : noteIndex, note);
+    actualIndex = noteIndex === -1
       ? score.staves[staffIndex].measures[measureIndex].notes.length - 1
       : noteIndex;
+  }
 
+  if (added) {
     setSelection([{ staffIndex, measureIndex, noteIndex: actualIndex }]);
+    _notifyChange();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public API: insert note before selected (Alt+letter)
+// ---------------------------------------------------------------------------
+
+/**
+ * Insert a note BEFORE the currently selected note, pushing subsequent notes right.
+ * Used for Alt+letter shortcut (one-off insert without toggling insert mode).
+ */
+export function insertNoteBeforeByKey(noteName) {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+
+  const name = noteName.toLowerCase();
+  if (!NOTE_NAMES.includes(name)) return;
+
+  const score = getScore();
+  const sel = _primarySel();
+  if (!sel) return;
+
+  const staffIndex = sel.staffIndex;
+  const measureIndex = sel.measureIndex;
+
+  const key = buildKey(name, editorState.currentAccidental, editorState.currentOctave);
+  const note = _buildNoteFromState(key);
+
+  _pushUndoIfAvailable();
+
+  const added = insertNoteAt(score, staffIndex, measureIndex, sel.noteIndex, note);
+
+  if (added) {
+    setSelection([{ staffIndex, measureIndex, noteIndex: sel.noteIndex }]);
     _notifyChange();
   }
 }

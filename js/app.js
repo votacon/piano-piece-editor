@@ -4,8 +4,8 @@ import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } fr
 import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume, getScoreDuration } from './playback.js';
 import {
   initEditor, getEditorState, setDuration, toggleAccidental,
-  toggleRestMode, toggleDynamics, handleScoreClick,
-  insertNoteByKey, deleteSelectedNote, navigateSelection,
+  toggleRestMode, toggleDynamics, toggleInsertMode, handleScoreClick,
+  insertNoteByKey, insertNoteBeforeByKey, deleteSelectedNote, navigateSelection,
   changeOctave, toggleTie, switchStaff, getGhostNoteInfo,
   addToChord, addToChordByClick, getNotesInRect,
   copySelection, cutSelection, pasteAtSelection
@@ -59,6 +59,7 @@ function syncToolbar() {
     btn.classList.toggle('active', btn.dataset.accidental === es.currentAccidental);
   });
   document.getElementById('btn-rest').classList.toggle('active', es.restMode);
+  document.getElementById('btn-insert').classList.toggle('active', es.insertMode);
   document.querySelectorAll('.dynamics-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.dynamics === es.currentDynamics);
   });
@@ -111,6 +112,10 @@ function setupToolbar() {
   });
   document.getElementById('btn-tie').addEventListener('click', () => {
     toggleTie();
+  });
+  document.getElementById('btn-insert').addEventListener('click', () => {
+    toggleInsertMode();
+    syncToolbar();
   });
   document.getElementById('btn-add-measure').addEventListener('click', () => {
     pushUndo();
@@ -381,6 +386,8 @@ function setupKeyboard() {
       e.preventDefault();
       if (shift) {
         addToChord(key.toLowerCase()); // Shift+letter → add to chord
+      } else if (e.altKey) {
+        insertNoteBeforeByKey(key.toLowerCase()); // Alt+letter → insert before
       } else {
         insertNoteByKey(key.toLowerCase());
       }
@@ -419,6 +426,13 @@ function setupKeyboard() {
     if (!ctrl && !shift && key === 'r') {
       e.preventDefault();
       toggleRestMode();
+      syncToolbar();
+      return;
+    }
+
+    if (!ctrl && !shift && key === 'i') {
+      e.preventDefault();
+      toggleInsertMode();
       syncToolbar();
       return;
     }
