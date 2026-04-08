@@ -1,5 +1,5 @@
 // app.js — Bootstrap, orchestration, toolbar wiring, keyboard shortcuts
-import { createScore, cloneScore } from './score-model.js';
+import { createScore, cloneScore, addMeasure, removeMeasure } from './score-model.js';
 import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } from './renderer.js';
 import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition } from './playback.js';
 import {
@@ -110,6 +110,18 @@ function setupToolbar() {
   });
   document.getElementById('btn-tie').addEventListener('click', () => {
     toggleTie();
+  });
+  document.getElementById('btn-add-measure').addEventListener('click', () => {
+    pushUndo();
+    addMeasure(state.score);
+    render();
+  });
+  document.getElementById('btn-remove-measure').addEventListener('click', () => {
+    pushUndo();
+    if (removeMeasure(state.score)) {
+      state.selection = [];
+      render();
+    }
   });
   document.getElementById('btn-undo').addEventListener('click', undo);
   document.getElementById('btn-redo').addEventListener('click', redo);
@@ -304,6 +316,26 @@ function setupKeyboard() {
     if (ctrl && !shift && key === 's') {
       e.preventDefault();
       saveScore();
+      return;
+    }
+
+    // Ctrl+= — add measure
+    if (ctrl && (key === '=' || key === '+')) {
+      e.preventDefault();
+      pushUndo();
+      addMeasure(state.score);
+      render();
+      return;
+    }
+
+    // Ctrl+- — remove last measure
+    if (ctrl && key === '-') {
+      e.preventDefault();
+      pushUndo();
+      if (removeMeasure(state.score)) {
+        state.selection = [];
+        render();
+      }
       return;
     }
 
