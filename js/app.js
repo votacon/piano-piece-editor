@@ -17,6 +17,17 @@ const state = {
   isPlaying: false,
 };
 
+let lastSavedJSON = '';
+
+function autoSave() {
+  const currentJSON = JSON.stringify(state.score);
+  if (currentJSON !== lastSavedJSON) {
+    saveScoreToStorage(state.score);
+    lastSavedJSON = currentJSON;
+    console.log('Auto-saved');
+  }
+}
+
 function render() {
   const container = document.getElementById('score-container');
   renderScore(state.score, container, state.selection);
@@ -222,7 +233,7 @@ function setupKeyboard() {
       return;
     }
 
-    if (ctrl && shift && key === 'Z') {
+    if (ctrl && shift && (key === 'Z' || key === 'z')) {
       e.preventDefault();
       redo();
       return;
@@ -295,6 +306,15 @@ function setupPlayback() {
   });
 }
 
+function saveScore() {
+  saveScoreToStorage(state.score);
+  lastSavedJSON = JSON.stringify(state.score);
+  const btn = document.getElementById('btn-save');
+  const orig = btn.textContent;
+  btn.textContent = 'Saved!';
+  setTimeout(() => { btn.textContent = orig; }, 1500);
+}
+
 function setupFileActions() {
   document.getElementById('btn-new').addEventListener('click', () => {
     document.getElementById('new-dialog').showModal();
@@ -319,10 +339,7 @@ function setupFileActions() {
     document.getElementById('new-dialog').close();
     render();
   });
-  document.getElementById('btn-save').addEventListener('click', () => {
-    const id = saveScoreToStorage(state.score);
-    alert(`Score saved (id: ${id})`);
-  });
+  document.getElementById('btn-save').addEventListener('click', saveScore);
   document.getElementById('btn-load').addEventListener('click', () => {
     showLoadDialog();
   });
@@ -393,7 +410,25 @@ function showLoadDialog() {
 }
 
 function init() {
-  state.score = createScore({ title: 'Untitled', composer: 'Composer', measures: 4 });
+  const allScores = getAllScores();
+  const ids = Object.keys(allScores);
+
+  if (ids.length > 0) {
+    let mostRecent = ids[0];
+    let mostRecentTime = 0;
+    for (const id of ids) {
+      const t = new Date(allScores[id].savedAt).getTime();
+      if (t > mostRecentTime) {
+        mostRecentTime = t;
+        mostRecent = id;
+      }
+    }
+    state.score = loadScoreFromStorage(mostRecent) || createScore();
+  } else {
+    state.score = createScore({ title: 'Untitled', composer: 'Composer', measures: 4 });
+  }
+
+  lastSavedJSON = JSON.stringify(state.score);
 
   initEditor({
     onScoreChange: render,
@@ -409,13 +444,13 @@ function init() {
   setupFileActions();
   setupPlayback();
 
+  setInterval(autoSave, 30000);
+
   render();
   console.log('Piano Piece Editor initialized');
 }
 
 window._state = state;
 window._render = render;
-window._undo = undo;
-window._redo = redo;
 
 document.addEventListener('DOMContentLoaded', init);
