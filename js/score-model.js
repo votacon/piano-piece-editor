@@ -160,6 +160,31 @@ export function addNote(score, staffIndex, measureIndex, noteIndex, note) {
   return true;
 }
 
+export function addKeyToNote(score, staffIndex, measureIndex, noteIndex, newKey) {
+  const staff = score.staves[staffIndex];
+  if (!staff || !staff.measures[measureIndex]) return false;
+  const note = staff.measures[measureIndex].notes[noteIndex];
+  if (!note || note.type === 'rest') return false;
+  // Avoid duplicate keys
+  if (note.keys.includes(newKey)) return false;
+  note.keys.push(newKey);
+  // Sort keys by pitch (low to high) for proper VexFlow rendering
+  note.keys.sort((a, b) => keyToMidi(a) - keyToMidi(b));
+  return true;
+}
+
+export function removeKeyFromNote(score, staffIndex, measureIndex, noteIndex, keyToRemove) {
+  const staff = score.staves[staffIndex];
+  if (!staff || !staff.measures[measureIndex]) return false;
+  const note = staff.measures[measureIndex].notes[noteIndex];
+  if (!note || note.type === 'rest') return false;
+  if (note.keys.length <= 1) return false; // don't remove last key
+  const idx = note.keys.indexOf(keyToRemove);
+  if (idx === -1) return false;
+  note.keys.splice(idx, 1);
+  return true;
+}
+
 export function replaceNote(score, staffIndex, measureIndex, noteIndex, newNote) {
   const staff = score.staves[staffIndex];
   if (!staff || !staff.measures[measureIndex]) return false;

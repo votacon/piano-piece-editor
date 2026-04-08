@@ -6,7 +6,8 @@ import {
   initEditor, getEditorState, setDuration, toggleAccidental,
   toggleRestMode, toggleDynamics, handleScoreClick,
   insertNoteByKey, deleteSelectedNote, navigateSelection,
-  changeOctave, toggleTie, switchStaff, getGhostNoteInfo
+  changeOctave, toggleTie, switchStaff, getGhostNoteInfo,
+  addToChord, addToChordByClick
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
 import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
@@ -140,7 +141,11 @@ function setupScoreClick() {
 
   container.addEventListener('click', (e) => {
     if (state.isPlaying) return;
-    handleScoreClick(e, getNoteElementMap());
+    if (e.shiftKey && state.selection) {
+      addToChordByClick(e, getNoteElementMap());
+    } else {
+      handleScoreClick(e, getNoteElementMap());
+    }
   });
 
   // Ghost note preview
@@ -203,9 +208,13 @@ function setupKeyboard() {
       return;
     }
 
-    if (!ctrl && !shift && 'cdefgab'.includes(key.toLowerCase()) && key.length === 1) {
+    if (!ctrl && 'cdefgab'.includes(key.toLowerCase()) && key.length === 1) {
       e.preventDefault();
-      insertNoteByKey(key.toLowerCase());
+      if (shift) {
+        addToChord(key.toLowerCase()); // Shift+letter → add to chord
+      } else {
+        insertNoteByKey(key.toLowerCase());
+      }
       return;
     }
 

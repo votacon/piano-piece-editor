@@ -1,8 +1,9 @@
 // editor.js — Mouse and keyboard interaction for the score editor
 import {
   createNote, createRest, addNote, removeNote, replaceNote,
+  addKeyToNote, removeKeyFromNote,
   DURATION_VALUES, NOTE_NAMES, parseKey, buildKey, yToKey,
-  addMeasure, cloneScore
+  addMeasure, cloneScore, keyToMidi
 } from './score-model.js';
 
 // ---------------------------------------------------------------------------
@@ -481,6 +482,71 @@ export function insertNoteByKey(noteName) {
       : noteIndex;
 
     setSelection({ staffIndex, measureIndex, noteIndex: actualIndex });
+    _notifyChange();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Public API: add note to chord (Shift+letter)
+// ---------------------------------------------------------------------------
+
+/**
+ * Add a pitch to the currently selected note, forming a chord.
+ * @param {string} noteName  One of 'a'..'g'
+ */
+export function addToChord(noteName) {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+
+  const name = noteName.toLowerCase();
+  if (!NOTE_NAMES.includes(name)) return;
+
+  const score = getScore();
+  const sel = getSelection();
+  if (!sel) return;
+
+  const { staffIndex, measureIndex, noteIndex } = sel;
+  const newKey = buildKey(name, editorState.currentAccidental, editorState.currentOctave);
+
+  _pushUndoIfAvailable();
+
+  if (addKeyToNote(score, staffIndex, measureIndex, noteIndex, newKey)) {
+    _notifyChange();
+  }
+}
+
+/**
+ * Add a pitch to the selected note by clicking while Shift is held.
+ * @param {MouseEvent} event
+ * @param {Array} noteElementMap
+ */
+export function addToChordByClick(event, noteElementMap) {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+
+  const score = getScore();
+  const sel = getSelection();
+  if (!sel) return;
+
+  const note = score.staves[sel.staffIndex].measures[sel.measureIndex].notes[sel.noteIndex];
+  if (!note || note.type === 'rest') return;
+
+  // Get clicked pitch from mouse position
+  const coords = _svgCoords(event);
+  if (!coords) return;
+
+  // Find stave for the selected note
+  const staveEntry = noteElementMap.find(
+    e => e.staffIndex === sel.staffIndex && e.measureIndex === sel.measureIndex
+  );
+  if (!staveEntry || !staveEntry.stave) return;
+
+  const clef = score.staves[sel.staffIndex].clef;
+  const clickedKey = _yToKeyFromStave(coords.my, staveEntry.stave, clef);
+  const { name, octave } = parseKey(clickedKey);
+  const newKey = buildKey(name, editorState.currentAccidental, octave);
+
+  _pushUndoIfAvailable();
+
+  if (addKeyToNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newKey)) {
     _notifyChange();
   }
 }
