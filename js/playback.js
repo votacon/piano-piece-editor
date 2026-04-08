@@ -46,7 +46,12 @@ export function startPlayback(score, container) {
   if (isPlaying) stopPlayback();
 
   scoreContainer = container;
-  audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) {
+    console.error('Failed to create AudioContext:', e);
+    return;
+  }
 
   timeline = buildTimeline(score);
   if (timeline.length === 0) return;
@@ -154,15 +159,26 @@ export function buildTimeline(score) {
           }
         }
 
-        events.push({
-          time,
-          duration: durationSeconds,
-          frequencies,
-          dynamics: note.dynamics || 'mf',
-          staffIndex: si,
-          measureIndex: mi,
-          noteIndex: ni,
-        });
+        // If the previous note in this staff was tied, extend its duration
+        // instead of creating a new event
+        const prevEvent = events.length > 0 ? events[events.length - 1] : null;
+        const isPrevTied = prevEvent && prevEvent.staffIndex === si && prevEvent._tied;
+
+        if (isPrevTied && frequencies.length > 0) {
+          prevEvent.duration += durationSeconds;
+          prevEvent._tied = !!note.tied; // propagate tie chain correctly
+        } else {
+          events.push({
+            time,
+            duration: durationSeconds,
+            frequencies,
+            dynamics: note.dynamics || 'mf',
+            staffIndex: si,
+            measureIndex: mi,
+            noteIndex: ni,
+            _tied: !!note.tied,
+          });
+        }
 
         time += durationSeconds;
       }
@@ -214,10 +230,10 @@ function scheduleAnimationLoop() {
       return;
     }
 
-    // Find the event currently playing (last event whose start time <= elapsed)
+    // Find the treble-staff event currently playing (for stable cursor positioning)
     let currentEvent = null;
     for (let i = timeline.length - 1; i >= 0; i--) {
-      if (timeline[i].time <= elapsed) {
+      if (timeline[i].time <= elapsed && timeline[i].staffIndex === 0) {
         currentEvent = timeline[i];
         break;
       }

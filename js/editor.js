@@ -224,7 +224,33 @@ export function handleScoreClick(event, noteElementMap) {
   const hit   = _hitTest(event, noteElementMap);
 
   if (hit) {
-    // Select the clicked note
+    const measure = score.staves[hit.staffIndex].measures[hit.measureIndex];
+    const hitNote = measure.notes[hit.noteIndex];
+
+    // If a rest is clicked, replace it with a note at the clicked pitch
+    if (hitNote && hitNote.type === 'rest') {
+      const svgEl = event.currentTarget;
+      const rect  = svgEl.getBoundingClientRect();
+      const my    = event.clientY - rect.top;
+      const clef  = score.staves[hit.staffIndex].clef;
+      const key   = _yToKeyFromStave(my, hit.stave, clef);
+      const note  = _buildNoteFromState(key);
+
+      _pushUndoIfAvailable();
+
+      const added = addNote(score, hit.staffIndex, hit.measureIndex, hit.noteIndex, note);
+      if (added) {
+        setSelection({
+          staffIndex:   hit.staffIndex,
+          measureIndex: hit.measureIndex,
+          noteIndex:    hit.noteIndex,
+        });
+        _notifyChange();
+        return;
+      }
+    }
+
+    // Select the clicked note (non-rest)
     setSelection({
       staffIndex:   hit.staffIndex,
       measureIndex: hit.measureIndex,
@@ -243,25 +269,41 @@ export function handleScoreClick(event, noteElementMap) {
   const my   = event.clientY - rect.top;
   const mx   = event.clientX - rect.left;
 
-  // Find the stave entry closest vertically to the click
+  // Find the stave that contains the click (horizontally AND vertically)
   let closestStaff    = null;
   let closestMeasure  = null;
   let closestStaveObj = null;
-  let minVertDist     = Infinity;
+  let bestScore       = Infinity;
+  const seen = new Set();
 
   for (const entry of noteElementMap) {
     if (!entry.stave) continue;
+    const key = `${entry.staffIndex}-${entry.measureIndex}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    const staveX = entry.stave.getX();
+    const staveW = entry.stave.getWidth();
     const staveY = entry.stave.getY();
     const staveH = entry.stave.getHeight();
+
+    // Horizontal distance: 0 if click is inside the stave, positive otherwise
+    const dx = mx < staveX ? staveX - mx : mx > staveX + staveW ? mx - staveX - staveW : 0;
     const staveM = staveY + staveH / 2;
-    const dist   = Math.abs(my - staveM);
-    if (dist < minVertDist) {
-      minVertDist    = dist;
+    const dy = Math.abs(my - staveM);
+
+    // Strongly prefer staves that contain the click horizontally
+    const score = dx > 0 ? 10000 + dx + dy : dy;
+
+    if (score < bestScore) {
+      bestScore      = score;
       closestStaff   = entry.staffIndex;
       closestMeasure = entry.measureIndex;
       closestStaveObj = entry.stave;
     }
   }
+
+  const minVertDist = bestScore >= 10000 ? bestScore - 10000 : bestScore;
 
   if (closestStaff === null || closestStaveObj === null) return;
 
@@ -486,12 +528,12 @@ export function toggleTie() {
 /**
  * Toggle keyboard-input staff between treble (0) and bass (1).
  */
+let _savedOctave = { 0: 4, 1: 3 };
+
 export function switchStaff() {
+  // Save current octave for this staff before switching
+  _savedOctave[editorState.currentStaff] = editorState.currentOctave;
   editorState.currentStaff = editorState.currentStaff === 0 ? 1 : 0;
-  // Adjust default octave for the clef
-  if (editorState.currentStaff === 1) {
-    editorState.currentOctave = Math.min(editorState.currentOctave, 4);
-  } else {
-    editorState.currentOctave = Math.max(editorState.currentOctave, 4);
-  }
+  // Restore the saved octave for the target staff
+  editorState.currentOctave = _savedOctave[editorState.currentStaff];
 }

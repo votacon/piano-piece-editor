@@ -199,7 +199,9 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
           last_indices: [0],
         });
         tie.setContext(vfContext).draw();
-      } catch (e) {}
+      } catch (e) {
+        console.warn('Tie render failed:', e);
+      }
     }
   }
 }

@@ -61,6 +61,12 @@ html, body {
   background: #1a4a8a;
 }
 
+.bar-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
 /* --- Zone 2: Toolbar --- */
 #toolbar {
   display: flex;

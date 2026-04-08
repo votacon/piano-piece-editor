@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Como Usar — Piano Piece Editor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      background: #0f0f23;
+      color: #e0e0e0;
+      line-height: 1.7;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px;
+      background: #16213e;
+      border-bottom: 1px solid #0f3460;
+    }
+
+    header h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    header a {
+      color: #e0e0e0;
+      text-decoration: none;
+      background: #0f3460;
+      border: 1px solid #1a4a8a;
+      padding: 4px 14px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      transition: background 0.15s;
+    }
+
+    header a:hover { background: #1a4a8a; }
+
+    .container {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 32px 24px 80px;
+    }
+
+    .intro {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid #1a1a3e;
+    }
+
+    .intro h2 {
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+    }
+
+    .intro p {
+      opacity: 0.7;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    nav.toc {
+      background: #1a1a3e;
+      border: 1px solid #3a3a6e;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 40px;
+    }
+
+    nav.toc h3 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.5;
+      margin-bottom: 10px;
+    }
+
+    nav.toc ol {
+      list-style: none;
+      counter-reset: toc;
+      columns: 2;
+      column-gap: 24px;
+    }
+
+    nav.toc li {
+      counter-increment: toc;
+      margin-bottom: 6px;
+    }
+
+    nav.toc li::before {
+      content: counter(toc) ". ";
+      opacity: 0.4;
+    }
+
+    nav.toc a {
+      color: #7c9fdb;
+      text-decoration: none;
+    }
+
+    nav.toc a:hover { text-decoration: underline; }
+
+    section {
+      margin-bottom: 36px;
+    }
+
+    section h2 {
+      font-size: 1.15rem;
+      color: #7c9fdb;
+      border-bottom: 1px solid #1a1a3e;
+      padding-bottom: 6px;
+      margin-bottom: 14px;
+    }
+
+    section p {
+      margin-bottom: 10px;
+    }
+
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 10px;
+    }
+
+    li { margin-bottom: 4px; }
+
+    kbd {
+      display: inline-block;
+      background: #2a2a4e;
+      border: 1px solid #3a3a6e;
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-size: 0.82em;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 12px;
+    }
+
+    th, td {
+      text-align: left;
+      padding: 6px 12px;
+      border-bottom: 1px solid #1a1a3e;
+    }
+
+    th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      opacity: 0.5;
+    }
+
+    td:first-child { white-space: nowrap; }
+
+    .tip {
+      background: #162340;
+      border-left: 3px solid #533483;
+      padding: 10px 14px;
+      border-radius: 0 6px 6px 0;
+      margin: 12px 0;
+      font-size: 0.9em;
+    }
+
+    .tip strong { color: #7c52b8; }
+
+    @media (max-width: 600px) {
+      nav.toc ol { columns: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Piano Piece Editor</h1>
+    <a href="index.html">&larr; Voltar ao Editor</a>
+  </header>
+
+  <div class="container">
+
+    <div class="intro">
+      <h2>Como Usar</h2>
+      <p>Guia completo para criar, editar e reproduzir partituras de piano diretamente no navegador.</p>
+    </div>
+
+    <nav class="toc">
+      <h3>Indice</h3>
+      <ol>
+        <li><a href="#criar">Criando uma Partitura</a></li>
+        <li><a href="#notas">Editando Notas</a></li>
+        <li><a href="#duracoes">Duracoes</a></li>
+        <li><a href="#acidentes">Acidentes (Sustenido, Bemol)</a></li>
+        <li><a href="#pausas">Pausas e Ligaduras</a></li>
+        <li><a href="#dinamicas">Dinamicas</a></li>
+        <li><a href="#navegacao">Navegacao</a></li>
+        <li><a href="#playback">Reproducao</a></li>
+        <li><a href="#salvar">Salvar e Carregar</a></li>
+        <li><a href="#atalhos">Atalhos de Teclado</a></li>
+      </ol>
+    </nav>
+
+    <!-- 1 -->
+    <section id="criar">
+      <h2>1. Criando uma Partitura</h2>
+      <p>Clique no botao <kbd>New</kbd> no canto superior direito. Uma janela aparecera com as opcoes:</p>
+      <ul>
+        <li><strong>Title</strong> — nome da peca</li>
+        <li><strong>Composer</strong> — nome do compositor</li>
+        <li><strong>Time Signature</strong> — compasso (4/4, 3/4, 2/4, 6/8)</li>
+        <li><strong>Key</strong> — tonalidade (C Major, G Major, etc.)</li>
+        <li><strong>BPM</strong> — andamento (20 a 300)</li>
+        <li><strong>Measures</strong> — quantidade de compassos (1 a 64)</li>
+      </ul>
+      <p>Clique em <kbd>Create</kbd> para gerar a partitura. O titulo e o compositor podem ser editados a qualquer momento clicando diretamente sobre eles na partitura.</p>
+    </section>
+
+    <!-- 2 -->
+    <section id="notas">
+      <h2>2. Editando Notas</h2>
+      <p>Para adicionar uma nota, clique sobre o pentagrama na posicao desejada. A nota sera inserida com a duracao selecionada na barra de ferramentas.</p>
+      <p>Voce tambem pode digitar notas pelo teclado usando as teclas <kbd>C</kbd> <kbd>D</kbd> <kbd>E</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>A</kbd> <kbd>B</kbd> (correspondendo a Do, Re, Mi, Fa, Sol, La, Si).</p>
+      <p>Para <strong>selecionar</strong> uma nota existente, clique sobre ela — ficara destacada em azul. Para <strong>apagar</strong> a nota selecionada, pressione <kbd>Delete</kbd> ou <kbd>Backspace</kbd>.</p>
+    </section>
+
+    <!-- 3 -->
+    <section id="duracoes">
+      <h2>3. Duracoes</h2>
+      <p>Selecione a duracao desejada na barra de ferramentas antes de inserir a nota:</p>
+      <table>
+        <tr><th>Simbolo</th><th>Duracao</th><th>Atalho</th></tr>
+        <tr><td>&#119133;</td><td>Semibreve (whole)</td><td><kbd>1</kbd></td></tr>
+        <tr><td>&#119134;</td><td>Minima (half)</td><td><kbd>2</kbd></td></tr>
+        <tr><td>&#119135;</td><td>Seminima (quarter)</td><td><kbd>3</kbd></td></tr>
+        <tr><td>&#119136;</td><td>Colcheia (eighth)</td><td><kbd>4</kbd></td></tr>
+        <tr><td>&#119137;</td><td>Semicolcheia (sixteenth)</td><td><kbd>5</kbd></td></tr>
+      </table>
+    </section>
+
+    <!-- 4 -->
+    <section id="acidentes">
+      <h2>4. Acidentes (Sustenido, Bemol)</h2>
+      <p>Na barra de ferramentas, ative o acidente desejado <em>antes</em> de inserir a nota:</p>
+      <ul>
+        <li><kbd>S</kbd> — Sustenido (&#9839;)</li>
+        <li><kbd>Shift+F</kbd> — Bemol (&#9837;)</li>
+        <li>Bequadro (&#9838;) — clique no botao na barra de ferramentas</li>
+      </ul>
+      <p>O acidente fica ativo ate voce desativa-lo clicando novamente no botao.</p>
+    </section>
+
+    <!-- 5 -->
+    <section id="pausas">
+      <h2>5. Pausas e Ligaduras</h2>
+      <p><strong>Pausas:</strong> ative o modo de pausa pressionando <kbd>R</kbd> ou clicando no botao de pausa na barra de ferramentas. As proximas notas inseridas serao pausas com a duracao selecionada.</p>
+      <p><strong>Ligaduras (Tie):</strong> selecione uma nota e pressione <kbd>T</kbd> ou clique no botao <kbd>Tie</kbd> para ligar a nota selecionada a proxima nota de mesma altura.</p>
+    </section>
+
+    <!-- 6 -->
+    <section id="dinamicas">
+      <h2>6. Dinamicas</h2>
+      <p>As dinamicas controlam a intensidade do som durante a reproducao. Selecione uma nota e aplique a dinamica desejada:</p>
+      <table>
+        <tr><th>Simbolo</th><th>Significado</th><th>Volume</th></tr>
+        <tr><td><em>pp</em></td><td>Pianissimo</td><td>Muito suave</td></tr>
+        <tr><td><em>p</em></td><td>Piano</td><td>Suave</td></tr>
+        <tr><td><em>mp</em></td><td>Mezzo-piano</td><td>Moderadamente suave</td></tr>
+        <tr><td><em>mf</em></td><td>Mezzo-forte</td><td>Moderadamente forte</td></tr>
+        <tr><td><em>f</em></td><td>Forte</td><td>Forte</td></tr>
+        <tr><td><em>ff</em></td><td>Fortissimo</td><td>Muito forte</td></tr>
+      </table>
+    </section>
+
+    <!-- 7 -->
+    <section id="navegacao">
+      <h2>7. Navegacao</h2>
+      <ul>
+        <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> — mover entre notas</li>
+        <li><kbd>Shift+&uarr;</kbd> <kbd>Shift+&darr;</kbd> — alterar a oitava da nota selecionada</li>
+        <li><kbd>Tab</kbd> — alternar entre clave de sol (mao direita) e clave de fa (mao esquerda)</li>
+      </ul>
+    </section>
+
+    <!-- 8 -->
+    <section id="playback">
+      <h2>8. Reproducao</h2>
+      <p>Use os controles na barra inferior:</p>
+      <ul>
+        <li><kbd>&#9654; Play</kbd> — inicia a reproducao (atalho: <kbd>Espaco</kbd>)</li>
+        <li><kbd>&#9632; Stop</kbd> — para a reproducao</li>
+        <li><strong>Barra de progresso</strong> — mostra a posicao atual na partitura</li>
+        <li><strong>BPM</strong> — ajuste o andamento (20 a 300 batidas por minuto)</li>
+      </ul>
+      <p>Durante a reproducao, um cursor azul acompanha a posicao na partitura. As dinamicas afetam o volume de cada nota.</p>
+    </section>
+
+    <!-- 9 -->
+    <section id="salvar">
+      <h2>9. Salvar e Carregar</h2>
+      <ul>
+        <li><kbd>Save</kbd> — salva a partitura no navegador (localStorage). O salvamento automatico ocorre a cada 30 segundos.</li>
+        <li><kbd>Load</kbd> — abre uma lista de partituras salvas para carregar ou excluir.</li>
+        <li><kbd>Export</kbd> — exporta a partitura como arquivo JSON, que pode ser compartilhado ou guardado como backup.</li>
+      </ul>
+      <div class="tip"><strong>Dica:</strong> ao reabrir o editor, a partitura mais recente e carregada automaticamente.</div>
+    </section>
+
+    <!-- 10 -->
+    <section id="atalhos">
+      <h2>10. Atalhos de Teclado</h2>
+      <table>
+        <tr><th>Tecla</th><th>Acao</th></tr>
+        <tr><td><kbd>C</kbd> <kbd>D</kbd> <kbd>E</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>A</kbd> <kbd>B</kbd></td><td>Inserir nota (Do a Si)</td></tr>
+        <tr><td><kbd>1</kbd> a <kbd>5</kbd></td><td>Selecionar duracao (semibreve a semicolcheia)</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Sustenido</td></tr>
+        <tr><td><kbd>Shift+F</kbd></td><td>Bemol</td></tr>
+        <tr><td><kbd>R</kbd></td><td>Modo de pausa</td></tr>
+        <tr><td><kbd>T</kbd></td><td>Ligadura (tie)</td></tr>
+        <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>Apagar nota selecionada</td></tr>
+        <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Navegar entre notas</td></tr>
+        <tr><td><kbd>Shift+&uarr;</kbd> <kbd>Shift+&darr;</kbd></td><td>Alterar oitava</td></tr>
+        <tr><td><kbd>Tab</kbd></td><td>Alternar entre claves</td></tr>
+        <tr><td><kbd>Espaco</kbd></td><td>Play / Pause</td></tr>
+        <tr><td><kbd>Cmd+Z</kbd></td><td>Desfazer</td></tr>
+        <tr><td><kbd>Cmd+Shift+Z</kbd></td><td>Refazer</td></tr>
+      </table>
+    </section>
+
+  </div>
+
+</body>
+</html>

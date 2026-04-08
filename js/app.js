@@ -152,6 +152,13 @@ function setupKeyboard() {
     const ctrl = e.metaKey || e.ctrlKey;
     const shift = e.shiftKey;
 
+    // Ctrl+S / Cmd+S — save score
+    if (ctrl && !shift && key === 's') {
+      e.preventDefault();
+      saveScore();
+      return;
+    }
+
     if (!ctrl && !shift && 'cdefgab'.includes(key.toLowerCase()) && key.length === 1) {
       e.preventDefault();
       insertNoteByKey(key.toLowerCase());
@@ -180,6 +187,13 @@ function setupKeyboard() {
       return;
     }
 
+    if (!ctrl && !shift && key === 'n') {
+      e.preventDefault();
+      toggleAccidental('n');
+      syncToolbar();
+      return;
+    }
+
     if (!ctrl && !shift && key === 'r') {
       e.preventDefault();
       toggleRestMode();
@@ -201,12 +215,12 @@ function setupKeyboard() {
 
     if (!shift && key === 'ArrowLeft') {
       e.preventDefault();
-      navigateSelection(-1);
+      navigateSelection('left');
       return;
     }
     if (!shift && key === 'ArrowRight') {
       e.preventDefault();
-      navigateSelection(1);
+      navigateSelection('right');
       return;
     }
 
@@ -327,8 +341,8 @@ function setupFileActions() {
     const composer = document.getElementById('new-composer').value || 'Composer';
     const timeSig = document.getElementById('new-time-sig').value;
     const keySig = document.getElementById('new-key-sig').value;
-    const bpm = parseInt(document.getElementById('new-bpm').value, 10) || 120;
-    const measures = parseInt(document.getElementById('new-measures').value, 10) || 4;
+    const bpm = Math.max(20, Math.min(300, parseInt(document.getElementById('new-bpm').value, 10) || 120));
+    const measures = Math.max(1, Math.min(64, parseInt(document.getElementById('new-measures').value, 10) || 4));
 
     state.score = createScore({
       title, composer, timeSignature: timeSig,
@@ -345,6 +359,35 @@ function setupFileActions() {
   });
   document.getElementById('btn-export').addEventListener('click', () => {
     exportScoreAsJSON(state.score);
+  });
+  document.getElementById('btn-import').addEventListener('click', () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          if (!Array.isArray(imported.staves) || imported.staves.length < 2 ||
+              !imported.timeSignature || !imported.timeSignature.beats) {
+            alert('Invalid score file.');
+            return;
+          }
+          delete imported._savedAt;
+          state.score = imported;
+          state.selection = null;
+          clearHistory();
+          render();
+        } catch (e) {
+          alert('Failed to parse JSON file.');
+        }
+      };
+      reader.readAsText(file);
+    });
+    input.click();
   });
   document.getElementById('load-dialog-cancel').addEventListener('click', () => {
     document.getElementById('load-dialog').close();
@@ -417,7 +460,7 @@ function init() {
     let mostRecent = ids[0];
     let mostRecentTime = 0;
     for (const id of ids) {
-      const t = new Date(allScores[id].savedAt).getTime();
+      const t = new Date(allScores[id]._savedAt).getTime();
       if (t > mostRecentTime) {
         mostRecentTime = t;
         mostRecent = id;
