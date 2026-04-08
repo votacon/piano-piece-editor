@@ -220,6 +220,13 @@ function setupScoreClick() {
 
   // ── Mouse up: finalize selection ──
   container.addEventListener('mouseup', (e) => {
+    // Shift+click for chord — handle before dragStart check
+    // (mousedown skips dragStart when shift is held)
+    if (e.shiftKey && state.selection.length > 0 && !dragStart) {
+      addToChordByClick(e, getNoteElementMap());
+      return;
+    }
+
     if (!dragStart) return;
 
     const wasDrag = dragStart.moved;
@@ -246,12 +253,7 @@ function setupScoreClick() {
     dragStart = null;
 
     if (!wasDrag) {
-      // Normal click
-      if (e.shiftKey && state.selection.length > 0) {
-        addToChordByClick(e, getNoteElementMap());
-      } else {
-        handleScoreClick(e, getNoteElementMap());
-      }
+      handleScoreClick(e, getNoteElementMap());
     }
   });
 
