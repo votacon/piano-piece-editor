@@ -1,7 +1,7 @@
 // app.js — Bootstrap, orchestration, toolbar wiring, keyboard shortcuts
 import { createScore, cloneScore, addMeasure, removeMeasure } from './score-model.js';
 import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } from './renderer.js';
-import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition } from './playback.js';
+import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume } from './playback.js';
 import {
   initEditor, getEditorState, setDuration, toggleAccidental,
   toggleRestMode, toggleDynamics, handleScoreClick,
@@ -478,6 +478,9 @@ function setupPlayback() {
     stopPlayback();
     state.isPlaying = false;
     updatePlayButton(false);
+  });
+  document.getElementById('volume-slider').addEventListener('input', (e) => {
+    setVolume(parseInt(e.target.value, 10) / 100);
   });
 
   initPlayback({

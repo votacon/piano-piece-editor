@@ -18,6 +18,8 @@ export const DYNAMICS_GAIN = {
 };
 
 // Module-level state
+let masterVolume = 0.8;
+let masterGainNode = null;
 let audioContext = null;
 let scheduledSources = [];
 let animationFrameId = null;
@@ -42,6 +44,13 @@ export function getIsPlaying() {
   return isPlaying;
 }
 
+export function setVolume(value) {
+  masterVolume = Math.max(0, Math.min(1, value));
+  if (masterGainNode) {
+    masterGainNode.gain.setValueAtTime(masterVolume, audioContext.currentTime);
+  }
+}
+
 export function startPlayback(score, container) {
   if (isPlaying) stopPlayback();
 
@@ -52,6 +61,11 @@ export function startPlayback(score, container) {
     console.error('Failed to create AudioContext:', e);
     return;
   }
+
+  // Master volume node — all tones route through this
+  masterGainNode = audioContext.createGain();
+  masterGainNode.gain.setValueAtTime(masterVolume, audioContext.currentTime);
+  masterGainNode.connect(audioContext.destination);
 
   timeline = buildTimeline(score);
   if (timeline.length === 0) return;
@@ -90,6 +104,7 @@ export function stopPlayback() {
     try { src.stop(); } catch (_) {}
   }
   scheduledSources = [];
+  masterGainNode = null;
 
   if (audioContext) {
     audioContext.close().catch(() => {});
@@ -127,7 +142,7 @@ function playTone(frequency, startTime, duration, gain) {
   gainNode.gain.linearRampToValueAtTime(0, startTime + duration + release);
 
   osc.connect(gainNode);
-  gainNode.connect(audioContext.destination);
+  gainNode.connect(masterGainNode || audioContext.destination);
 
   osc.start(startTime);
   osc.stop(startTime + duration + release + 0.05);

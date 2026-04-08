@@ -311,6 +311,20 @@ html, body {
   font-size: 0.8rem;
 }
 
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.volume-control input[type="range"] {
+  width: 80px;
+  accent-color: #2563eb;
+  cursor: pointer;
+}
+
 /* --- Dialogs --- */
 dialog {
   background: #1a1a3e;
