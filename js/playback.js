@@ -178,7 +178,8 @@ export function buildTimeline(score) {
 
       for (let ni = 0; ni < measure.notes.length; ni++) {
         const note = measure.notes[ni];
-        const beatDuration = DURATION_VALUES[note.duration] || 1;
+        let beatDuration = DURATION_VALUES[note.duration] || 1;
+        if (note.dotted) beatDuration *= 1.5;
         const durationSeconds = beatDuration * secondsPerBeat;
 
         const frequencies = [];

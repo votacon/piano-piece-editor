@@ -4,11 +4,16 @@ import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } fr
 import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume, getScoreDuration } from './playback.js';
 import {
   initEditor, getEditorState, setDuration, toggleAccidental,
-  toggleRestMode, toggleDynamics, toggleInsertMode, handleScoreClick,
+  toggleRestMode, toggleDynamics, toggleInsertMode, toggleOverwriteMode, toggleDotMode,
+  handleScoreClick,
   insertNoteByKey, insertNoteBeforeByKey, deleteSelectedNote, navigateSelection,
   changeOctave, toggleTie, switchStaff, getGhostNoteInfo,
   addToChord, addToChordByClick, getNotesInRect,
-  copySelection, cutSelection, pasteAtSelection
+  copySelection, cutSelection, pasteAtSelection,
+  changeDurationOfSelected, changeAccidentalOfSelected, changeOctaveOfSelected,
+  changePitchOfSelected, extendSelection, navigateToMeasure, selectMeasure,
+  navigateToStart, navigateToEnd, duplicateSelection, transposeSelection,
+  toggleDot, repeatLastAction
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
 import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
@@ -60,6 +65,10 @@ function syncToolbar() {
   });
   document.getElementById('btn-rest').classList.toggle('active', es.restMode);
   document.getElementById('btn-insert').classList.toggle('active', es.insertMode);
+  const btnOvr = document.getElementById('btn-overwrite');
+  if (btnOvr) btnOvr.classList.toggle('active', es.overwriteMode);
+  const btnDot = document.getElementById('btn-dot');
+  if (btnDot) btnDot.classList.toggle('active', es.dotted);
   document.querySelectorAll('.dynamics-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.dynamics === es.currentDynamics);
   });
@@ -117,6 +126,21 @@ function setupToolbar() {
     toggleInsertMode();
     syncToolbar();
   });
+  const btnOvr = document.getElementById('btn-overwrite');
+  if (btnOvr) {
+    btnOvr.addEventListener('click', () => {
+      toggleOverwriteMode();
+      syncToolbar();
+    });
+  }
+  const btnDot = document.getElementById('btn-dot');
+  if (btnDot) {
+    btnDot.addEventListener('click', () => {
+      if (state.selection.length > 0) toggleDot();
+      toggleDotMode();
+      syncToolbar();
+    });
+  }
   document.getElementById('btn-add-measure').addEventListener('click', () => {
     pushUndo();
     addMeasure(state.score);
@@ -333,6 +357,8 @@ function setupKeyboard() {
     const key = e.key;
     const ctrl = e.metaKey || e.ctrlKey;
     const shift = e.shiftKey;
+    const alt = e.altKey;
+    const hasSel = state.selection.length > 0;
 
     // Ctrl+S / Cmd+S — save score
     if (ctrl && !shift && key === 's') {
@@ -342,7 +368,7 @@ function setupKeyboard() {
     }
 
     // Ctrl+= — add measure
-    if (ctrl && (key === '=' || key === '+')) {
+    if (ctrl && !alt && (key === '=' || key === '+')) {
       e.preventDefault();
       pushUndo();
       addMeasure(state.score);
@@ -351,7 +377,7 @@ function setupKeyboard() {
     }
 
     // Ctrl+- — remove last measure
-    if (ctrl && key === '-') {
+    if (ctrl && !alt && key === '-') {
       e.preventDefault();
       pushUndo();
       if (removeMeasure(state.score)) {
@@ -382,35 +408,64 @@ function setupKeyboard() {
       return;
     }
 
+    // Ctrl+D — duplicate selection
+    if (ctrl && !shift && key === 'd') {
+      e.preventDefault();
+      duplicateSelection();
+      return;
+    }
+
+    // Ctrl+. — repeat last action
+    if (ctrl && key === '.') {
+      e.preventDefault();
+      repeatLastAction();
+      return;
+    }
+
+    // Ctrl+Shift+M — select entire measure
+    if (ctrl && shift && (key === 'M' || key === 'm')) {
+      e.preventDefault();
+      selectMeasure();
+      return;
+    }
+
+    // Note letter keys: C D E F G A B
     if (!ctrl && 'cdefgab'.includes(key.toLowerCase()) && key.length === 1) {
       e.preventDefault();
       if (shift) {
-        addToChord(key.toLowerCase()); // Shift+letter → add to chord
-      } else if (e.altKey) {
-        insertNoteBeforeByKey(key.toLowerCase()); // Alt+letter → insert before
+        addToChord(key.toLowerCase());
+      } else if (alt) {
+        insertNoteBeforeByKey(key.toLowerCase());
+      } else if (getEditorState().overwriteMode && hasSel) {
+        changePitchOfSelected(key.toLowerCase());
       } else {
         insertNoteByKey(key.toLowerCase());
       }
       return;
     }
 
+    // Duration keys 1-5: modify selected note + set future duration
     const durMap = { '1': 'w', '2': 'h', '3': 'q', '4': '8', '5': '16' };
     if (!ctrl && !shift && durMap[key]) {
       e.preventDefault();
+      if (hasSel) changeDurationOfSelected(durMap[key]);
       setDuration(durMap[key]);
       syncToolbar();
       return;
     }
 
+    // Accidental keys: modify selected note + set future accidental
     if (!ctrl && !shift && key === 's') {
       e.preventDefault();
+      if (hasSel) changeAccidentalOfSelected('#');
       toggleAccidental('#');
       syncToolbar();
       return;
     }
 
-    if (!ctrl && !shift && key === '-') {
+    if (!ctrl && !shift && !alt && key === '-') {
       e.preventDefault();
+      if (hasSel) changeAccidentalOfSelected('b');
       toggleAccidental('b');
       syncToolbar();
       return;
@@ -418,6 +473,7 @@ function setupKeyboard() {
 
     if (!ctrl && !shift && key === 'n') {
       e.preventDefault();
+      if (hasSel) changeAccidentalOfSelected('n');
       toggleAccidental('n');
       syncToolbar();
       return;
@@ -437,9 +493,26 @@ function setupKeyboard() {
       return;
     }
 
+    // O — toggle overwrite mode
+    if (!ctrl && !shift && key === 'o') {
+      e.preventDefault();
+      toggleOverwriteMode();
+      syncToolbar();
+      return;
+    }
+
     if (!ctrl && !shift && key === 't') {
       e.preventDefault();
       toggleTie();
+      return;
+    }
+
+    // . — toggle dotted note
+    if (!ctrl && !shift && key === '.') {
+      e.preventDefault();
+      if (hasSel) toggleDot();
+      toggleDotMode();
+      syncToolbar();
       return;
     }
 
@@ -449,25 +522,77 @@ function setupKeyboard() {
       return;
     }
 
-    if (!shift && key === 'ArrowLeft') {
+    // Alt+Arrow Up/Down — transpose by semitone
+    if (alt && !ctrl && !shift && key === 'ArrowUp') {
+      e.preventDefault();
+      transposeSelection(1);
+      return;
+    }
+    if (alt && !ctrl && !shift && key === 'ArrowDown') {
+      e.preventDefault();
+      transposeSelection(-1);
+      return;
+    }
+
+    // Ctrl+Arrow Left/Right — jump between measures
+    if (ctrl && !shift && key === 'ArrowLeft') {
+      e.preventDefault();
+      navigateToMeasure('left');
+      return;
+    }
+    if (ctrl && !shift && key === 'ArrowRight') {
+      e.preventDefault();
+      navigateToMeasure('right');
+      return;
+    }
+
+    // Shift+Arrow Left/Right — extend selection range
+    if (shift && !ctrl && key === 'ArrowLeft') {
+      e.preventDefault();
+      extendSelection('left');
+      return;
+    }
+    if (shift && !ctrl && key === 'ArrowRight') {
+      e.preventDefault();
+      extendSelection('right');
+      return;
+    }
+
+    // Arrow Left/Right — navigate
+    if (!shift && !ctrl && !alt && key === 'ArrowLeft') {
       e.preventDefault();
       navigateSelection('left');
       return;
     }
-    if (!shift && key === 'ArrowRight') {
+    if (!shift && !ctrl && !alt && key === 'ArrowRight') {
       e.preventDefault();
       navigateSelection('right');
       return;
     }
 
-    if (shift && key === 'ArrowUp') {
+    // Shift+Arrow Up/Down — change octave (of selected note + future input)
+    if (shift && !ctrl && !alt && key === 'ArrowUp') {
       e.preventDefault();
+      if (hasSel) changeOctaveOfSelected(1);
       changeOctave(1);
       return;
     }
-    if (shift && key === 'ArrowDown') {
+    if (shift && !ctrl && !alt && key === 'ArrowDown') {
       e.preventDefault();
+      if (hasSel) changeOctaveOfSelected(-1);
       changeOctave(-1);
+      return;
+    }
+
+    // Home/End — jump to start/end of staff
+    if (key === 'Home') {
+      e.preventDefault();
+      navigateToStart();
+      return;
+    }
+    if (key === 'End') {
+      e.preventDefault();
+      navigateToEnd();
       return;
     }
 

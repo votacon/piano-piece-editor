@@ -206,7 +206,10 @@
         <li><a href="#acidentes">Acidentes (Sustenido, Bemol)</a></li>
         <li><a href="#pausas">Pausas e Ligaduras</a></li>
         <li><a href="#dinamicas">Dinamicas</a></li>
-        <li><a href="#navegacao">Navegacao</a></li>
+        <li><a href="#editar">Editar Notas Existentes</a></li>
+        <li><a href="#modos">Modos de Edicao</a></li>
+        <li><a href="#navegacao">Navegacao e Selecao</a></li>
+        <li><a href="#clipboard">Copiar, Colar e Duplicar</a></li>
         <li><a href="#playback">Reproducao</a></li>
         <li><a href="#salvar">Salvar e Carregar</a></li>
         <li><a href="#atalhos">Atalhos de Teclado</a></li>
@@ -234,12 +237,13 @@
       <p>Para adicionar uma nota, clique sobre o pentagrama na posicao desejada. A nota sera inserida com a duracao selecionada na barra de ferramentas.</p>
       <p>Voce tambem pode digitar notas pelo teclado usando as teclas <kbd>C</kbd> <kbd>D</kbd> <kbd>E</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>A</kbd> <kbd>B</kbd> (correspondendo a Do, Re, Mi, Fa, Sol, La, Si).</p>
       <p>Para <strong>selecionar</strong> uma nota existente, clique sobre ela — ficara destacada em azul. Para <strong>apagar</strong> a nota selecionada, pressione <kbd>Delete</kbd> ou <kbd>Backspace</kbd>.</p>
+      <p>Para formar um <strong>acorde</strong>, selecione uma nota e pressione <kbd>Shift</kbd> + letra (ex: <kbd>Shift+E</kbd>) ou clique segurando <kbd>Shift</kbd>.</p>
     </section>
 
     <!-- 3 -->
     <section id="duracoes">
       <h2>3. Duracoes</h2>
-      <p>Selecione a duracao desejada na barra de ferramentas antes de inserir a nota:</p>
+      <p>Selecione a duracao na barra de ferramentas ou pelo teclado. Se uma nota estiver selecionada, a duracao dela sera alterada imediatamente:</p>
       <table>
         <tr><th>Simbolo</th><th>Duracao</th><th>Atalho</th></tr>
         <tr><td>&#119133;</td><td>Semibreve (whole)</td><td><kbd>1</kbd></td></tr>
@@ -248,18 +252,19 @@
         <tr><td>&#119136;</td><td>Colcheia (eighth)</td><td><kbd>4</kbd></td></tr>
         <tr><td>&#119137;</td><td>Semicolcheia (sixteenth)</td><td><kbd>5</kbd></td></tr>
       </table>
+      <p><strong>Nota pontuada:</strong> pressione <kbd>.</kbd> (ponto) para ativar o modo pontuado. Uma nota pontuada dura 1.5x o normal (ex: seminima pontuada = 1.5 tempos). Se uma nota estiver selecionada, o ponto e aplicado diretamente.</p>
     </section>
 
     <!-- 4 -->
     <section id="acidentes">
       <h2>4. Acidentes (Sustenido, Bemol)</h2>
-      <p>Na barra de ferramentas, ative o acidente desejado <em>antes</em> de inserir a nota:</p>
+      <p>Ative o acidente desejado pelo teclado ou pela barra de ferramentas. Se uma nota estiver selecionada, o acidente e aplicado diretamente nela:</p>
       <ul>
         <li><kbd>S</kbd> — Sustenido (&#9839;)</li>
-        <li><kbd>Shift+F</kbd> — Bemol (&#9837;)</li>
-        <li>Bequadro (&#9838;) — clique no botao na barra de ferramentas</li>
+        <li><kbd>-</kbd> — Bemol (&#9837;)</li>
+        <li><kbd>N</kbd> — Bequadro (&#9838;)</li>
       </ul>
-      <p>O acidente fica ativo ate voce desativa-lo clicando novamente no botao.</p>
+      <p>O acidente fica ativo ate voce desativa-lo pressionando a mesma tecla novamente.</p>
     </section>
 
     <!-- 5 -->
@@ -285,18 +290,72 @@
     </section>
 
     <!-- 7 -->
-    <section id="navegacao">
-      <h2>7. Navegacao</h2>
-      <ul>
-        <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> — mover entre notas</li>
-        <li><kbd>Shift+&uarr;</kbd> <kbd>Shift+&darr;</kbd> — alterar a oitava da nota selecionada</li>
-        <li><kbd>Tab</kbd> — alternar entre clave de sol (mao direita) e clave de fa (mao esquerda)</li>
-      </ul>
+    <section id="editar">
+      <h2>7. Editar Notas Existentes</h2>
+      <p>Voce pode modificar qualquer propriedade de uma nota selecionada diretamente, sem precisar apagar e reinserir:</p>
+      <table>
+        <tr><th>Propriedade</th><th>Atalho</th><th>Exemplo</th></tr>
+        <tr><td>Duracao</td><td><kbd>1</kbd> a <kbd>5</kbd></td><td>Selecione nota, pressione <kbd>2</kbd> para mudar para minima</td></tr>
+        <tr><td>Acidente</td><td><kbd>S</kbd> / <kbd>-</kbd> / <kbd>N</kbd></td><td>Selecione nota, pressione <kbd>S</kbd> para adicionar sustenido</td></tr>
+        <tr><td>Oitava</td><td><kbd>Shift+&uarr;</kbd> / <kbd>Shift+&darr;</kbd></td><td>Selecione nota, Shift+seta para cima sobe uma oitava</td></tr>
+        <tr><td>Nota pontuada</td><td><kbd>.</kbd></td><td>Selecione nota, pressione ponto para pontuar</td></tr>
+        <tr><td>Transpor</td><td><kbd>Alt+&uarr;</kbd> / <kbd>Alt+&darr;</kbd></td><td>Move a nota um semitom para cima ou para baixo</td></tr>
+      </table>
+      <div class="tip"><strong>Dica:</strong> essas acoes funcionam tambem com multiplas notas selecionadas. Selecione varias notas e altere a duracao de todas de uma vez.</div>
     </section>
 
     <!-- 8 -->
+    <section id="modos">
+      <h2>8. Modos de Edicao</h2>
+      <p>O editor tem tres modos de insercao, acessiveis pela barra de ferramentas ou pelo teclado:</p>
+      <table>
+        <tr><th>Modo</th><th>Atalho</th><th>Comportamento</th></tr>
+        <tr><td>Normal</td><td>(padrao)</td><td>Letras C-B inserem nota <em>apos</em> a selecao</td></tr>
+        <tr><td>Insert</td><td><kbd>I</kbd></td><td>Letras C-B inserem nota <em>antes</em> da selecao, empurrando as demais</td></tr>
+        <tr><td>Overwrite</td><td><kbd>O</kbd></td><td>Letras C-B <em>substituem</em> o pitch da nota selecionada e avancam o cursor</td></tr>
+      </table>
+      <p>O modo ativo aparece destacado na barra de ferramentas (<kbd>Ins</kbd> / <kbd>Ovr</kbd>).</p>
+      <div class="tip"><strong>Dica:</strong> o modo Overwrite e ideal para corrigir melodias — ative com <kbd>O</kbd>, navegue ate a nota errada e digite a correta. O cursor avanca automaticamente, como editar texto.</div>
+    </section>
+
+    <!-- 9 -->
+    <section id="navegacao">
+      <h2>9. Navegacao e Selecao</h2>
+      <p><strong>Navegacao basica:</strong></p>
+      <ul>
+        <li><kbd>&larr;</kbd> <kbd>&rarr;</kbd> — mover entre notas</li>
+        <li><kbd>Ctrl+&larr;</kbd> <kbd>Ctrl+&rarr;</kbd> — saltar para o compasso anterior/proximo</li>
+        <li><kbd>Home</kbd> / <kbd>End</kbd> — ir para o inicio/fim do pentagrama</li>
+        <li><kbd>Tab</kbd> — alternar entre clave de sol e clave de fa</li>
+      </ul>
+      <p><strong>Selecao:</strong></p>
+      <ul>
+        <li><kbd>Shift+&larr;</kbd> <kbd>Shift+&rarr;</kbd> — estender a selecao (selecionar range pelo teclado)</li>
+        <li><kbd>Ctrl+Shift+M</kbd> — selecionar todas as notas do compasso atual</li>
+        <li>Clicar e arrastar — selecao retangular com o mouse</li>
+      </ul>
+      <p><strong>Oitava:</strong></p>
+      <ul>
+        <li><kbd>Shift+&uarr;</kbd> <kbd>Shift+&darr;</kbd> — alterar a oitava (da nota selecionada e das proximas)</li>
+      </ul>
+    </section>
+
+    <!-- 10 -->
+    <section id="clipboard">
+      <h2>10. Copiar, Colar e Duplicar</h2>
+      <ul>
+        <li><kbd>Ctrl+C</kbd> — copiar notas selecionadas</li>
+        <li><kbd>Ctrl+X</kbd> — recortar notas selecionadas</li>
+        <li><kbd>Ctrl+V</kbd> — colar na posicao da selecao</li>
+        <li><kbd>Ctrl+D</kbd> — duplicar a selecao (cola imediatamente apos)</li>
+      </ul>
+      <div class="tip"><strong>Dica:</strong> <kbd>Ctrl+D</kbd> e otimo para repetir padroes ritmicos ou melodicos. Selecione um trecho com <kbd>Shift+setas</kbd> ou <kbd>Ctrl+Shift+M</kbd>, depois duplique.</div>
+      <p><strong>Repetir acao:</strong> <kbd>Ctrl+.</kbd> repete a ultima acao de edicao (mudar duracao, transpor, etc.).</p>
+    </section>
+
+    <!-- 11 -->
     <section id="playback">
-      <h2>8. Reproducao</h2>
+      <h2>11. Reproducao</h2>
       <p>Use os controles na barra inferior:</p>
       <ul>
         <li><kbd>&#9654; Play</kbd> — inicia a reproducao (atalho: <kbd>Espaco</kbd>)</li>
@@ -307,9 +366,9 @@
       <p>Durante a reproducao, um cursor azul acompanha a posicao na partitura. As dinamicas afetam o volume de cada nota.</p>
     </section>
 
-    <!-- 9 -->
+    <!-- 12 -->
     <section id="salvar">
-      <h2>9. Salvar e Carregar</h2>
+      <h2>12. Salvar e Carregar</h2>
       <ul>
         <li><kbd>Save</kbd> — salva a partitura no navegador (localStorage). O salvamento automatico ocorre a cada 30 segundos.</li>
         <li><kbd>Load</kbd> — abre uma lista de partituras salvas para carregar ou excluir.</li>
@@ -318,24 +377,65 @@
       <div class="tip"><strong>Dica:</strong> ao reabrir o editor, a partitura mais recente e carregada automaticamente.</div>
     </section>
 
-    <!-- 10 -->
+    <!-- 13 -->
     <section id="atalhos">
-      <h2>10. Atalhos de Teclado</h2>
+      <h2>13. Atalhos de Teclado</h2>
+
+      <p><strong>Entrada de notas</strong></p>
       <table>
         <tr><th>Tecla</th><th>Acao</th></tr>
-        <tr><td><kbd>C</kbd> <kbd>D</kbd> <kbd>E</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>A</kbd> <kbd>B</kbd></td><td>Inserir nota (Do a Si)</td></tr>
-        <tr><td><kbd>1</kbd> a <kbd>5</kbd></td><td>Selecionar duracao (semibreve a semicolcheia)</td></tr>
-        <tr><td><kbd>S</kbd></td><td>Sustenido</td></tr>
-        <tr><td><kbd>Shift+F</kbd></td><td>Bemol</td></tr>
+        <tr><td><kbd>C</kbd> <kbd>D</kbd> <kbd>E</kbd> <kbd>F</kbd> <kbd>G</kbd> <kbd>A</kbd> <kbd>B</kbd></td><td>Inserir nota (ou substituir pitch no modo Overwrite)</td></tr>
+        <tr><td><kbd>Shift</kbd> + letra</td><td>Adicionar nota ao acorde</td></tr>
+        <tr><td><kbd>Alt</kbd> + letra</td><td>Inserir nota antes da selecao</td></tr>
+        <tr><td><kbd>1</kbd> a <kbd>5</kbd></td><td>Duracao (semibreve a semicolcheia) — altera nota selecionada</td></tr>
+        <tr><td><kbd>.</kbd></td><td>Nota pontuada (1.5x duracao) — altera nota selecionada</td></tr>
+        <tr><td><kbd>S</kbd></td><td>Sustenido — altera nota selecionada</td></tr>
+        <tr><td><kbd>-</kbd></td><td>Bemol — altera nota selecionada</td></tr>
+        <tr><td><kbd>N</kbd></td><td>Bequadro — altera nota selecionada</td></tr>
         <tr><td><kbd>R</kbd></td><td>Modo de pausa</td></tr>
         <tr><td><kbd>T</kbd></td><td>Ligadura (tie)</td></tr>
         <tr><td><kbd>Delete</kbd> / <kbd>Backspace</kbd></td><td>Apagar nota selecionada</td></tr>
+      </table>
+
+      <p><strong>Modos</strong></p>
+      <table>
+        <tr><th>Tecla</th><th>Acao</th></tr>
+        <tr><td><kbd>I</kbd></td><td>Modo Insert (inserir antes)</td></tr>
+        <tr><td><kbd>O</kbd></td><td>Modo Overwrite (substituir pitch)</td></tr>
+      </table>
+
+      <p><strong>Navegacao e selecao</strong></p>
+      <table>
+        <tr><th>Tecla</th><th>Acao</th></tr>
         <tr><td><kbd>&larr;</kbd> <kbd>&rarr;</kbd></td><td>Navegar entre notas</td></tr>
-        <tr><td><kbd>Shift+&uarr;</kbd> <kbd>Shift+&darr;</kbd></td><td>Alterar oitava</td></tr>
+        <tr><td><kbd>Shift+&larr;</kbd> <kbd>Shift+&rarr;</kbd></td><td>Estender selecao</td></tr>
+        <tr><td><kbd>Ctrl+&larr;</kbd> <kbd>Ctrl+&rarr;</kbd></td><td>Saltar entre compassos</td></tr>
+        <tr><td><kbd>Home</kbd> / <kbd>End</kbd></td><td>Inicio / fim do pentagrama</td></tr>
+        <tr><td><kbd>Ctrl+Shift+M</kbd></td><td>Selecionar compasso inteiro</td></tr>
+        <tr><td><kbd>Shift+&uarr;</kbd> <kbd>Shift+&darr;</kbd></td><td>Alterar oitava (da nota selecionada + proximas)</td></tr>
+        <tr><td><kbd>Alt+&uarr;</kbd> <kbd>Alt+&darr;</kbd></td><td>Transpor por semitom</td></tr>
         <tr><td><kbd>Tab</kbd></td><td>Alternar entre claves</td></tr>
+      </table>
+
+      <p><strong>Clipboard e edicao</strong></p>
+      <table>
+        <tr><th>Tecla</th><th>Acao</th></tr>
+        <tr><td><kbd>Ctrl+C</kbd></td><td>Copiar</td></tr>
+        <tr><td><kbd>Ctrl+X</kbd></td><td>Recortar</td></tr>
+        <tr><td><kbd>Ctrl+V</kbd></td><td>Colar</td></tr>
+        <tr><td><kbd>Ctrl+D</kbd></td><td>Duplicar selecao</td></tr>
+        <tr><td><kbd>Ctrl+.</kbd></td><td>Repetir ultima acao</td></tr>
+        <tr><td><kbd>Ctrl+Z</kbd></td><td>Desfazer</td></tr>
+        <tr><td><kbd>Ctrl+Shift+Z</kbd></td><td>Refazer</td></tr>
+      </table>
+
+      <p><strong>Compassos e playback</strong></p>
+      <table>
+        <tr><th>Tecla</th><th>Acao</th></tr>
+        <tr><td><kbd>Ctrl+=</kbd></td><td>Adicionar compasso</td></tr>
+        <tr><td><kbd>Ctrl+-</kbd></td><td>Remover ultimo compasso</td></tr>
         <tr><td><kbd>Espaco</kbd></td><td>Play / Pause</td></tr>
-        <tr><td><kbd>Cmd+Z</kbd></td><td>Desfazer</td></tr>
-        <tr><td><kbd>Cmd+Shift+Z</kbd></td><td>Refazer</td></tr>
+        <tr><td><kbd>Ctrl+S</kbd></td><td>Salvar</td></tr>
       </table>
     </section>
 

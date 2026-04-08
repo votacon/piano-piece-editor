@@ -51,7 +51,9 @@ export function createEmptyMeasure() {
 
 export function measureDuration(measure) {
   return measure.notes.reduce((sum, note) => {
-    return sum + (DURATION_VALUES[note.duration] || 0);
+    let dur = DURATION_VALUES[note.duration] || 0;
+    if (note.dotted) dur *= 1.5;
+    return sum + dur;
   }, 0);
 }
 
@@ -108,7 +110,8 @@ export function addNote(score, staffIndex, measureIndex, noteIndex, note) {
   const beats = score.timeSignature.beats;
 
   const currentDuration = measureDuration(measure);
-  const noteDuration = DURATION_VALUES[note.duration] || 0;
+  let noteDuration = DURATION_VALUES[note.duration] || 0;
+  if (note.dotted) noteDuration *= 1.5;
 
   // If measure has only a single whole rest, replace it
   if (measure.notes.length === 1 &&
@@ -191,12 +194,15 @@ export function replaceNote(score, staffIndex, measureIndex, noteIndex, newNote)
   const measure = staff.measures[measureIndex];
   if (noteIndex < 0 || noteIndex >= measure.notes.length) return false;
 
-  const oldDuration = DURATION_VALUES[measure.notes[noteIndex].duration] || 0;
-  const newDuration = DURATION_VALUES[newNote.duration] || 0;
+  const oldNote = measure.notes[noteIndex];
+  let oldDuration = DURATION_VALUES[oldNote.duration] || 0;
+  if (oldNote.dotted) oldDuration *= 1.5;
+  let newDuration = DURATION_VALUES[newNote.duration] || 0;
+  if (newNote.dotted) newDuration *= 1.5;
   const beats = score.timeSignature.beats;
   const currentTotal = measureDuration(measure);
 
-  if (currentTotal - oldDuration + newDuration > beats) {
+  if (currentTotal - oldDuration + newDuration > beats + 0.001) {
     return false;
   }
 
@@ -313,7 +319,11 @@ function _cascadeOverflow(score, staffIndex, measureIndex, overflowNotes) {
   const beats = score.timeSignature.beats;
 
   // Remove rests from the beginning to make space for overflow notes
-  const neededBeats = overflowNotes.reduce((sum, n) => sum + (DURATION_VALUES[n.duration] || 0), 0);
+  const neededBeats = overflowNotes.reduce((sum, n) => {
+    let d = DURATION_VALUES[n.duration] || 0;
+    if (n.dotted) d *= 1.5;
+    return sum + d;
+  }, 0);
   let freedBeats = 0;
   while (measure.notes.length > 0 && freedBeats < neededBeats) {
     if (measure.notes[0].type === 'rest') {
@@ -383,6 +393,16 @@ export function keyToMidi(key) {
   if (accidental === '#') midi += 1;
   if (accidental === 'b') midi -= 1;
   return midi;
+}
+
+export function midiToKey(midi, preferFlat = false) {
+  const octave = Math.floor(midi / 12) - 1;
+  const pitchClass = midi % 12;
+  const sharpNames = ['c', 'c#', 'd', 'd#', 'e', 'f', 'f#', 'g', 'g#', 'a', 'a#', 'b'];
+  const flatNames  = ['c', 'db', 'd', 'eb', 'e', 'f', 'gb', 'g', 'ab', 'a', 'bb', 'b'];
+  const names = preferFlat ? flatNames : sharpNames;
+  const n = names[pitchClass];
+  return buildKey(n[0], n.substring(1), octave);
 }
 
 export function midiToFrequency(midi) {

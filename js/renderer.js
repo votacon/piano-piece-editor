@@ -140,6 +140,11 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
       }
     }
 
+    // Add dot for dotted notes
+    if (noteData.dotted) {
+      vfNote.addDot(0);
+    }
+
     if (isSelected) {
       vfNote.setStyle({ fillStyle: '#2563eb', strokeStyle: '#2563eb' });
     }

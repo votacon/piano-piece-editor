@@ -3,7 +3,7 @@ import {
   createNote, createRest, addNote, removeNote, replaceNote,
   addKeyToNote, removeKeyFromNote, insertNoteAt,
   DURATION_VALUES, NOTE_NAMES, parseKey, buildKey, yToKey,
-  addMeasure, cloneScore, keyToMidi,
+  addMeasure, cloneScore, keyToMidi, midiToKey,
   measureDuration, fillMeasureWithRests
 } from './score-model.js';
 
@@ -17,6 +17,8 @@ const editorState = {
   currentDynamics: '',
   restMode: false,
   insertMode: false,
+  overwriteMode: false,
+  dotted: false,
   currentOctave: 4,
   currentStaff: 0,
 };
@@ -87,6 +89,16 @@ export function toggleInsertMode() {
   editorState.insertMode = !editorState.insertMode;
 }
 
+/** Toggle overwrite mode on/off (letter keys replace selected note pitch). */
+export function toggleOverwriteMode() {
+  editorState.overwriteMode = !editorState.overwriteMode;
+}
+
+/** Toggle dotted-note mode on/off. */
+export function toggleDotMode() {
+  editorState.dotted = !editorState.dotted;
+}
+
 /**
  * Toggle a dynamics marking on/off.  Passing the same value again clears it.
  * @param {string} dyn  e.g. 'pp', 'p', 'mp', 'mf', 'f', 'ff'
@@ -136,7 +148,9 @@ function _buildNoteFromState(key) {
   if (currentAccidental) options.accidental = currentAccidental;
   if (currentDynamics)   options.dynamics    = currentDynamics;
 
-  return createNote([fullKey], currentDuration, options);
+  const note = createNote([fullKey], currentDuration, options);
+  if (editorState.dotted) note.dotted = true;
+  return note;
 }
 
 /**
@@ -532,6 +546,7 @@ export function insertNoteByKey(noteName) {
 
   if (added) {
     setSelection([{ staffIndex, measureIndex, noteIndex: actualIndex }]);
+    _recordAction('insertNote', { noteName: name });
     _notifyChange();
   }
 }
@@ -791,6 +806,395 @@ export function switchStaff() {
   editorState.currentStaff = editorState.currentStaff === 0 ? 1 : 0;
   // Restore the saved octave for the target staff
   editorState.currentOctave = _savedOctave[editorState.currentStaff];
+}
+
+// ---------------------------------------------------------------------------
+// Public API: in-place note modification (Tier 1)
+// ---------------------------------------------------------------------------
+
+/** Change the duration of all selected notes in place. */
+export function changeDurationOfSelected(newDuration) {
+  if (!getScore || !getSelection || !onScoreChange) return false;
+  const score = getScore();
+  const allSel = getSelection();
+  if (!Array.isArray(allSel) || allSel.length === 0) return false;
+
+  _pushUndoIfAvailable();
+  let anyChanged = false;
+
+  for (const sel of allSel) {
+    const measure = score.staves[sel.staffIndex].measures[sel.measureIndex];
+    const note = measure.notes[sel.noteIndex];
+    if (!note || note.duration === newDuration) continue;
+
+    const newNote = { ...note, keys: [...note.keys], duration: newDuration };
+    if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
+      fillMeasureWithRests(measure, score.timeSignature.beats);
+      anyChanged = true;
+    }
+  }
+
+  if (anyChanged) {
+    _recordAction('changeDuration', { duration: newDuration });
+    _notifyChange();
+  }
+  return anyChanged;
+}
+
+/** Change the accidental of all selected notes in place. */
+export function changeAccidentalOfSelected(accidental) {
+  if (!getScore || !getSelection || !onScoreChange) return false;
+  const score = getScore();
+  const allSel = getSelection();
+  if (!Array.isArray(allSel) || allSel.length === 0) return false;
+
+  _pushUndoIfAvailable();
+  let anyChanged = false;
+
+  for (const sel of allSel) {
+    const note = score.staves[sel.staffIndex].measures[sel.measureIndex].notes[sel.noteIndex];
+    if (!note || note.type === 'rest') continue;
+
+    const newKeys = note.keys.map(k => {
+      const { name, octave } = parseKey(k);
+      return buildKey(name, accidental, octave);
+    });
+    const newNote = { ...note, keys: newKeys, duration: note.duration };
+    if (accidental && accidental !== 'n') {
+      newNote.accidental = accidental;
+    } else {
+      delete newNote.accidental;
+    }
+
+    if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
+      anyChanged = true;
+    }
+  }
+
+  if (anyChanged) {
+    _recordAction('changeAccidental', { accidental });
+    _notifyChange();
+  }
+  return anyChanged;
+}
+
+/** Change the octave of all selected notes in place by delta (+1 / -1). */
+export function changeOctaveOfSelected(delta) {
+  if (!getScore || !getSelection || !onScoreChange) return false;
+  const score = getScore();
+  const allSel = getSelection();
+  if (!Array.isArray(allSel) || allSel.length === 0) return false;
+
+  _pushUndoIfAvailable();
+  let anyChanged = false;
+
+  for (const sel of allSel) {
+    const note = score.staves[sel.staffIndex].measures[sel.measureIndex].notes[sel.noteIndex];
+    if (!note || note.type === 'rest') continue;
+
+    const newKeys = note.keys.map(k => {
+      const { name, accidental, octave } = parseKey(k);
+      const newOctave = Math.max(1, Math.min(8, octave + delta));
+      return buildKey(name, accidental, newOctave);
+    });
+    const newNote = { ...note, keys: newKeys, duration: note.duration };
+
+    if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
+      anyChanged = true;
+    }
+  }
+
+  if (anyChanged) {
+    _recordAction('changeOctave', { delta });
+    _notifyChange();
+  }
+  return anyChanged;
+}
+
+/** Replace the pitch of the selected note (overwrite mode). Advances selection. */
+export function changePitchOfSelected(noteName) {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return false;
+
+  const name = noteName.toLowerCase();
+  if (!NOTE_NAMES.includes(name)) return false;
+
+  const score = getScore();
+  const sel = _primarySel();
+  if (!sel) return false;
+
+  const note = score.staves[sel.staffIndex].measures[sel.measureIndex].notes[sel.noteIndex];
+  if (!note || note.type === 'rest') return false;
+
+  const newKey = buildKey(name, editorState.currentAccidental, editorState.currentOctave);
+  const newNote = { ...note, keys: [newKey], duration: note.duration };
+  if (editorState.currentAccidental && editorState.currentAccidental !== 'n') {
+    newNote.accidental = editorState.currentAccidental;
+  } else {
+    delete newNote.accidental;
+  }
+
+  _pushUndoIfAvailable();
+
+  if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
+    // Advance selection to next note (like typing over text)
+    const staff = score.staves[sel.staffIndex];
+    let nextMeasure = sel.measureIndex;
+    let nextNote = sel.noteIndex + 1;
+    if (nextNote >= staff.measures[nextMeasure].notes.length) {
+      nextNote = 0;
+      nextMeasure++;
+      if (nextMeasure >= staff.measures.length) {
+        nextMeasure = sel.measureIndex;
+        nextNote = sel.noteIndex;
+      }
+    }
+    setSelection([{ staffIndex: sel.staffIndex, measureIndex: nextMeasure, noteIndex: nextNote }]);
+    _recordAction('changePitch', { noteName: name });
+    _notifyChange();
+    return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Public API: advanced navigation & selection (Tier 2)
+// ---------------------------------------------------------------------------
+
+/** Extend selection range by one note in the given direction. */
+export function extendSelection(direction) {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+
+  const score = getScore();
+  const sel = getSelection();
+  if (!Array.isArray(sel) || sel.length === 0) {
+    setSelection([{ staffIndex: 0, measureIndex: 0, noteIndex: 0 }]);
+    _notifyChange();
+    return;
+  }
+
+  const sorted = [...sel].sort((a, b) =>
+    a.staffIndex !== b.staffIndex ? a.staffIndex - b.staffIndex :
+    a.measureIndex !== b.measureIndex ? a.measureIndex - b.measureIndex :
+    a.noteIndex - b.noteIndex
+  );
+
+  if (direction === 'right') {
+    const last = sorted[sorted.length - 1];
+    const next = _adjacentPosition(score, last, 1);
+    if (next && !sel.some(s => s.staffIndex === next.staffIndex && s.measureIndex === next.measureIndex && s.noteIndex === next.noteIndex)) {
+      setSelection([...sel, next]);
+      _notifyChange();
+    }
+  } else {
+    const first = sorted[0];
+    const prev = _adjacentPosition(score, first, -1);
+    if (prev && !sel.some(s => s.staffIndex === prev.staffIndex && s.measureIndex === prev.measureIndex && s.noteIndex === prev.noteIndex)) {
+      setSelection([prev, ...sel]);
+      _notifyChange();
+    }
+  }
+}
+
+/** Get the adjacent note position (delta = +1 or -1), wrapping across measures. */
+function _adjacentPosition(score, pos, delta) {
+  const staff = score.staves[pos.staffIndex];
+  if (!staff) return null;
+
+  let { measureIndex, noteIndex } = pos;
+  noteIndex += delta;
+
+  if (noteIndex >= staff.measures[measureIndex].notes.length) {
+    measureIndex++;
+    noteIndex = 0;
+    if (measureIndex >= staff.measures.length) return null;
+  } else if (noteIndex < 0) {
+    measureIndex--;
+    if (measureIndex < 0) return null;
+    noteIndex = staff.measures[measureIndex].notes.length - 1;
+  }
+
+  return { staffIndex: pos.staffIndex, measureIndex, noteIndex };
+}
+
+/** Jump to the first note of the next or previous measure. */
+export function navigateToMeasure(direction) {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+
+  const score = getScore();
+  const sel = _primarySel();
+  const staffIndex = sel ? sel.staffIndex : editorState.currentStaff;
+  let measureIndex = sel ? sel.measureIndex : 0;
+  const staff = score.staves[staffIndex];
+
+  if (direction === 'right') {
+    measureIndex = Math.min(measureIndex + 1, staff.measures.length - 1);
+  } else {
+    measureIndex = Math.max(measureIndex - 1, 0);
+  }
+
+  setSelection([{ staffIndex, measureIndex, noteIndex: 0 }]);
+  _notifyChange();
+}
+
+/** Select all notes in the current measure. */
+export function selectMeasure() {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+
+  const score = getScore();
+  const sel = _primarySel();
+  const staffIndex = sel ? sel.staffIndex : editorState.currentStaff;
+  const measureIndex = sel ? sel.measureIndex : 0;
+  const measure = score.staves[staffIndex].measures[measureIndex];
+  if (!measure) return;
+
+  const newSel = measure.notes.map((_, i) => ({ staffIndex, measureIndex, noteIndex: i }));
+  setSelection(newSel);
+  _notifyChange();
+}
+
+/** Jump to the first note of the staff. */
+export function navigateToStart() {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+  const sel = _primarySel();
+  const staffIndex = sel ? sel.staffIndex : editorState.currentStaff;
+  setSelection([{ staffIndex, measureIndex: 0, noteIndex: 0 }]);
+  _notifyChange();
+}
+
+/** Jump to the last note of the staff. */
+export function navigateToEnd() {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+  const score = getScore();
+  const sel = _primarySel();
+  const staffIndex = sel ? sel.staffIndex : editorState.currentStaff;
+  const staff = score.staves[staffIndex];
+  const lastMeasure = staff.measures.length - 1;
+  const lastNote = staff.measures[lastMeasure].notes.length - 1;
+  setSelection([{ staffIndex, measureIndex: lastMeasure, noteIndex: Math.max(0, lastNote) }]);
+  _notifyChange();
+}
+
+// ---------------------------------------------------------------------------
+// Public API: compositional accelerators (Tier 3)
+// ---------------------------------------------------------------------------
+
+/** Duplicate the current selection, pasting right after it. */
+export function duplicateSelection() {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+  if (!copySelection()) return;
+
+  const sel = getSelection();
+  if (!Array.isArray(sel) || sel.length === 0) return;
+
+  // Move selection to just after the last selected note
+  const sorted = [...sel].sort((a, b) =>
+    a.staffIndex !== b.staffIndex ? a.staffIndex - b.staffIndex :
+    a.measureIndex !== b.measureIndex ? a.measureIndex - b.measureIndex :
+    a.noteIndex - b.noteIndex
+  );
+  const last = sorted[sorted.length - 1];
+  const next = _adjacentPosition(getScore(), last, 1);
+  if (next) {
+    setSelection([next]);
+  }
+  pasteAtSelection();
+}
+
+/** Transpose all selected notes by a number of semitones. */
+export function transposeSelection(semitones) {
+  if (!getScore || !getSelection || !onScoreChange) return false;
+  const score = getScore();
+  const allSel = getSelection();
+  if (!Array.isArray(allSel) || allSel.length === 0) return false;
+
+  _pushUndoIfAvailable();
+  let anyChanged = false;
+
+  for (const sel of allSel) {
+    const note = score.staves[sel.staffIndex].measures[sel.measureIndex].notes[sel.noteIndex];
+    if (!note || note.type === 'rest') continue;
+
+    const newKeys = note.keys.map(k => {
+      const midi = keyToMidi(k);
+      const newMidi = Math.max(12, Math.min(127, midi + semitones));
+      return midiToKey(newMidi, semitones < 0);
+    });
+    const newNote = { ...note, keys: newKeys, duration: note.duration };
+
+    // Update accidental based on new key
+    const { accidental } = parseKey(newKeys[0]);
+    if (accidental) {
+      newNote.accidental = accidental;
+    } else {
+      delete newNote.accidental;
+    }
+
+    if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
+      anyChanged = true;
+    }
+  }
+
+  if (anyChanged) {
+    _recordAction('transpose', { semitones });
+    _notifyChange();
+  }
+  return anyChanged;
+}
+
+/** Toggle the dotted property of the selected note. */
+export function toggleDot() {
+  if (!getScore || !getSelection || !onScoreChange) return false;
+  const score = getScore();
+  const allSel = getSelection();
+  if (!Array.isArray(allSel) || allSel.length === 0) return false;
+
+  _pushUndoIfAvailable();
+  let anyChanged = false;
+
+  for (const sel of allSel) {
+    const measure = score.staves[sel.staffIndex].measures[sel.measureIndex];
+    const note = measure.notes[sel.noteIndex];
+    if (!note) continue;
+
+    const newNote = { ...note, keys: [...note.keys] };
+    newNote.dotted = !note.dotted;
+    if (!newNote.dotted) delete newNote.dotted;
+
+    if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
+      fillMeasureWithRests(measure, score.timeSignature.beats);
+      anyChanged = true;
+    }
+  }
+
+  if (anyChanged) {
+    _recordAction('toggleDot', {});
+    _notifyChange();
+  }
+  return anyChanged;
+}
+
+// ---------------------------------------------------------------------------
+// Public API: repeat last action (Tier 3D)
+// ---------------------------------------------------------------------------
+
+let _lastAction = null;
+
+function _recordAction(type, params) {
+  _lastAction = { type, params };
+}
+
+/** Repeat the last editing action. */
+export function repeatLastAction() {
+  if (!_lastAction) return;
+  switch (_lastAction.type) {
+    case 'insertNote': insertNoteByKey(_lastAction.params.noteName); break;
+    case 'changePitch': changePitchOfSelected(_lastAction.params.noteName); break;
+    case 'changeDuration': changeDurationOfSelected(_lastAction.params.duration); break;
+    case 'changeAccidental': changeAccidentalOfSelected(_lastAction.params.accidental); break;
+    case 'changeOctave': changeOctaveOfSelected(_lastAction.params.delta); break;
+    case 'transpose': transposeSelection(_lastAction.params.semitones); break;
+    case 'toggleDot': toggleDot(); break;
+  }
 }
 
 // ---------------------------------------------------------------------------
