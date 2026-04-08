@@ -233,7 +233,7 @@ function setupKeyboard() {
       return;
     }
 
-    if (!ctrl && shift && key === 'F') {
+    if (!ctrl && !shift && key === '-') {
       e.preventDefault();
       toggleAccidental('b');
       syncToolbar();
