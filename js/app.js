@@ -1,7 +1,7 @@
 // app.js — Bootstrap, orchestration, toolbar wiring, keyboard shortcuts
 import { createScore, cloneScore, addMeasure, removeMeasure } from './score-model.js';
 import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } from './renderer.js';
-import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume } from './playback.js';
+import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume, getScoreDuration } from './playback.js';
 import {
   initEditor, getEditorState, setDuration, toggleAccidental,
   toggleRestMode, toggleDynamics, handleScoreClick,
@@ -514,6 +514,7 @@ function setupPlayback() {
     stopPlayback();
     state.isPlaying = false;
     updatePlayButton(false);
+    document.getElementById('progress-fill').style.width = '0%';
   });
   document.getElementById('volume-slider').addEventListener('input', (e) => {
     setVolume(parseInt(e.target.value, 10) / 100);
@@ -521,10 +522,10 @@ function setupPlayback() {
 
   initPlayback({
     onProgress(progress, currentEvent) {
-      // Update progress bar if present
-      const progressBar = document.getElementById('progress-bar');
-      if (progressBar) {
-        progressBar.value = progress;
+      // Update progress bar fill width
+      const progressFill = document.getElementById('progress-fill');
+      if (progressFill) {
+        progressFill.style.width = (progress * 100) + '%';
       }
 
       // Move visual cursor to match the current note
@@ -535,13 +536,36 @@ function setupPlayback() {
       );
       const sb = getStaveBounds(currentEvent.staffIndex, currentEvent.measureIndex);
       if (bb && sb) {
-        setCursorPosition(bb.x, sb.y, sb.height);
+        // Compensate for SVG centering (margin: 0 auto) within the container
+        const container = document.getElementById('score-container');
+        const svg = container.querySelector('svg');
+        const svgOffsetX = svg
+          ? svg.getBoundingClientRect().left - container.getBoundingClientRect().left
+          : 0;
+        setCursorPosition(bb.x + svgOffsetX, sb.y, sb.height);
       }
     },
     onEnd() {
       state.isPlaying = false;
       updatePlayButton(false);
+      document.getElementById('progress-fill').style.width = '0%';
     },
+  });
+
+  // Click-to-seek on the progress bar
+  const progressBar = document.getElementById('progress-bar');
+  progressBar.addEventListener('click', (e) => {
+    const rect = progressBar.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const duration = getScoreDuration(state.score);
+    if (duration <= 0) return;
+    const seekTime = ratio * duration;
+
+    document.getElementById('progress-fill').style.width = (ratio * 100) + '%';
+
+    state.isPlaying = true;
+    updatePlayButton(true);
+    startPlayback(state.score, document.getElementById('score-container'), seekTime);
   });
 }
 

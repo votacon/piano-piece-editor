@@ -51,7 +51,7 @@ export function setVolume(value) {
   }
 }
 
-export function startPlayback(score, container) {
+export function startPlayback(score, container, startOffset = 0) {
   if (isPlaying) stopPlayback();
 
   scoreContainer = container;
@@ -73,17 +73,32 @@ export function startPlayback(score, container) {
   totalDuration = timeline.reduce((max, ev) => Math.max(max, ev.time + ev.duration), 0);
   totalDuration += ENVELOPE.release + 0.1; // pad for release tail
 
-  const startOffset = audioContext.currentTime + 0.05;
-  playbackStartTime = startOffset;
-  performanceStartTime = performance.now();
+  const ctxStart = audioContext.currentTime + 0.05;
+  playbackStartTime = ctxStart;
+  // Shift clock backwards so elapsed calculation accounts for seek offset
+  performanceStartTime = performance.now() - (startOffset * 1000);
 
   scheduledSources = [];
 
   for (const event of timeline) {
-    if (event.frequencies.length === 0) continue; // rest — no sound
+    if (event.frequencies.length === 0) continue;
+    const eventEnd = event.time + event.duration;
+    if (eventEnd <= startOffset) continue; // already past
+
     const gainValue = DYNAMICS_GAIN[event.dynamics] || DYNAMICS_GAIN.mf;
-    for (const freq of event.frequencies) {
-      playTone(freq, startOffset + event.time, event.duration, gainValue);
+
+    if (event.time >= startOffset) {
+      // Event starts at or after offset — schedule normally, shifted
+      const schedTime = ctxStart + (event.time - startOffset);
+      for (const freq of event.frequencies) {
+        playTone(freq, schedTime, event.duration, gainValue);
+      }
+    } else {
+      // Event spans the offset — play only the remaining portion
+      const remaining = eventEnd - startOffset;
+      for (const freq of event.frequencies) {
+        playTone(freq, ctxStart, remaining, gainValue);
+      }
     }
   }
 
@@ -202,6 +217,13 @@ export function buildTimeline(score) {
 
   events.sort((a, b) => a.time - b.time || a.staffIndex - b.staffIndex);
   return events;
+}
+
+export function getScoreDuration(score) {
+  const tl = buildTimeline(score);
+  if (tl.length === 0) return 0;
+  const raw = tl.reduce((max, ev) => Math.max(max, ev.time + ev.duration), 0);
+  return raw + ENVELOPE.release + 0.1;
 }
 
 function createCursor(container) {

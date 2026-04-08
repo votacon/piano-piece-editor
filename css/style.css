@@ -297,18 +297,23 @@ html, body {
 
 #progress-bar {
   flex: 1;
-  height: 4px;
+  height: 8px;
   background: #2a2a4e;
-  border-radius: 2px;
+  border-radius: 4px;
   position: relative;
   overflow: hidden;
+  cursor: pointer;
+}
+
+#progress-bar:hover {
+  background: #353560;
 }
 
 #progress-fill {
   width: 0%;
   height: 100%;
   background: #059669;
-  border-radius: 2px;
+  border-radius: 4px;
   transition: width 0.1s linear;
 }
 
