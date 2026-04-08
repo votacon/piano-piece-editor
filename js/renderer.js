@@ -109,10 +109,9 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
 
   for (let ni = 0; ni < measure.notes.length; ni++) {
     const noteData = measure.notes[ni];
-    const isSelected = selection &&
-                       selection.staffIndex === staffIndex &&
-                       selection.measureIndex === measureIndex &&
-                       selection.noteIndex === ni;
+    const isSelected = Array.isArray(selection)
+      ? selection.some(s => s.staffIndex === staffIndex && s.measureIndex === measureIndex && s.noteIndex === ni)
+      : selection && selection.staffIndex === staffIndex && selection.measureIndex === measureIndex && selection.noteIndex === ni;
 
     let vfNote;
 

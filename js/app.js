@@ -7,14 +7,14 @@ import {
   toggleRestMode, toggleDynamics, handleScoreClick,
   insertNoteByKey, deleteSelectedNote, navigateSelection,
   changeOctave, toggleTie, switchStaff, getGhostNoteInfo,
-  addToChord, addToChordByClick
+  addToChord, addToChordByClick, getNotesInRect
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
 import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
 
 const state = {
   score: null,
-  selection: null,
+  selection: [],
   isPlaying: false,
 };
 
@@ -73,7 +73,7 @@ function undo() {
   const restored = undoAction(state.score);
   if (restored === null) return;
   state.score = restored;
-  state.selection = null;
+  state.selection = [];
   render();
 }
 
@@ -81,7 +81,7 @@ function redo() {
   const restored = redoAction(state.score);
   if (restored === null) return;
   state.score = restored;
-  state.selection = null;
+  state.selection = [];
   render();
 }
 
@@ -139,21 +139,123 @@ function setupToolbar() {
 function setupScoreClick() {
   const container = document.getElementById('score-container');
 
-  container.addEventListener('click', (e) => {
-    if (state.isPlaying) return;
-    if (e.shiftKey && state.selection) {
-      addToChordByClick(e, getNoteElementMap());
-    } else {
-      handleScoreClick(e, getNoteElementMap());
+  // ── Drag-select state ──
+  let dragStart = null;   // {x, y} in SVG coords, null when not dragging
+  let selectBoxEl = null; // the visual selection rectangle
+
+  function getSvg() { return container.querySelector('svg'); }
+
+  function svgCoords(e) {
+    const svg = getSvg();
+    if (!svg) return null;
+    const r = svg.getBoundingClientRect();
+    return { mx: e.clientX - r.left, my: e.clientY - r.top };
+  }
+
+  function containerCoords(e) {
+    const r = container.getBoundingClientRect();
+    return { cx: e.clientX - r.left, cy: e.clientY - r.top };
+  }
+
+  function ensureSelectBox() {
+    if (!selectBoxEl || !selectBoxEl.parentNode) {
+      selectBoxEl = document.createElement('div');
+      selectBoxEl.className = 'select-box';
+      container.appendChild(selectBoxEl);
+    }
+  }
+
+  function hideSelectBox() {
+    if (selectBoxEl) selectBoxEl.style.display = 'none';
+  }
+
+  // ── Mouse down: start drag ──
+  container.addEventListener('mousedown', (e) => {
+    if (state.isPlaying || e.button !== 0) return;
+    // Don't start drag on shift-click (chord add)
+    if (e.shiftKey && state.selection.length > 0) return;
+
+    const c = svgCoords(e);
+    if (!c) return;
+    dragStart = { sx: c.mx, sy: c.my, ...containerCoords(e), moved: false };
+  });
+
+  // ── Mouse move: draw selection box ──
+  container.addEventListener('mousemove', (e) => {
+    // Update ghost note when not dragging
+    if (!dragStart) {
+      updateGhost(e);
+      return;
+    }
+
+    hideGhost();
+    const cc = containerCoords(e);
+    const dx = Math.abs(cc.cx - dragStart.cx);
+    const dy = Math.abs(cc.cy - dragStart.cy);
+
+    if (dx > 4 || dy > 4) dragStart.moved = true;
+    if (!dragStart.moved) return;
+
+    ensureSelectBox();
+    const x = Math.min(cc.cx, dragStart.cx);
+    const y = Math.min(cc.cy, dragStart.cy);
+    selectBoxEl.style.left = x + 'px';
+    selectBoxEl.style.top = y + 'px';
+    selectBoxEl.style.width = dx + 'px';
+    selectBoxEl.style.height = dy + 'px';
+    selectBoxEl.style.display = 'block';
+  });
+
+  // ── Mouse up: finalize selection ──
+  container.addEventListener('mouseup', (e) => {
+    if (!dragStart) return;
+
+    const wasDrag = dragStart.moved;
+    const startSvg = { x: dragStart.sx, y: dragStart.sy };
+
+    if (wasDrag) {
+      const endCoords = svgCoords(e);
+      if (endCoords) {
+        const rect = {
+          x: Math.min(startSvg.x, endCoords.mx),
+          y: Math.min(startSvg.y, endCoords.my),
+          w: Math.abs(endCoords.mx - startSvg.x),
+          h: Math.abs(endCoords.my - startSvg.y),
+        };
+        const found = getNotesInRect(rect, getNoteElementMap());
+        if (found.length > 0) {
+          state.selection = found;
+          render();
+        }
+      }
+      hideSelectBox();
+    }
+
+    dragStart = null;
+
+    if (!wasDrag) {
+      // Normal click
+      if (e.shiftKey && state.selection.length > 0) {
+        addToChordByClick(e, getNoteElementMap());
+      } else {
+        handleScoreClick(e, getNoteElementMap());
+      }
     }
   });
 
-  // Ghost note preview
+  container.addEventListener('mouseleave', () => {
+    if (dragStart && dragStart.moved) {
+      hideSelectBox();
+    }
+    dragStart = null;
+    hideGhost();
+  });
+
+  // ── Ghost note preview ──
   let ghostEl = null;
   let ghostLabel = null;
 
   function ensureGhostEl() {
-    // Re-create if removed by render (innerHTML = '')
     if (!ghostEl || !ghostEl.parentNode) {
       ghostEl = document.createElement('div');
       ghostEl.className = 'ghost-note';
@@ -164,7 +266,7 @@ function setupScoreClick() {
     }
   }
 
-  container.addEventListener('mousemove', (e) => {
+  function updateGhost(e) {
     if (state.isPlaying) { hideGhost(); return; }
 
     const info = getGhostNoteInfo(e, getNoteElementMap());
@@ -175,16 +277,13 @@ function setupScoreClick() {
     ghostEl.style.top = (info.snapY - 5) + 'px';
     ghostEl.style.display = 'block';
 
-    // Show note name (e.g. "C4", "F#5")
     const es = getEditorState();
     const parts = info.key.split('/');
     const noteName = parts[0].toUpperCase();
     const octave = parts[1];
     const acc = es.currentAccidental === '#' ? '#' : es.currentAccidental === 'b' ? 'b' : '';
     ghostLabel.textContent = noteName + acc + octave;
-  });
-
-  container.addEventListener('mouseleave', hideGhost);
+  }
 
   function hideGhost() {
     if (ghostEl) ghostEl.style.display = 'none';
@@ -401,7 +500,7 @@ function setupFileActions() {
       title, composer, timeSignature: timeSig,
       keySignature: keySig, tempo: bpm, measures,
     });
-    state.selection = null;
+    state.selection = [];
     clearHistory();
     document.getElementById('new-dialog').close();
     render();
@@ -431,7 +530,7 @@ function setupFileActions() {
           }
           delete imported._savedAt;
           state.score = imported;
-          state.selection = null;
+          state.selection = [];
           clearHistory();
           render();
         } catch (e) {
@@ -478,7 +577,7 @@ function showLoadDialog() {
           // Strip internal storage metadata before restoring
           delete loaded._savedAt;
           state.score = loaded;
-          state.selection = null;
+          state.selection = [];
           clearHistory();
           document.getElementById('load-dialog').close();
           render();

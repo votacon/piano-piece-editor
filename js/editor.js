@@ -92,6 +92,12 @@ export function toggleDynamics(dyn) {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/** Get the first (primary) selection from the array, or null. */
+function _primarySel() {
+  const sel = getSelection ? getSelection() : [];
+  return (Array.isArray(sel) && sel.length > 0) ? sel[0] : (sel && !Array.isArray(sel)) ? sel : null;
+}
+
 function _pushUndoIfAvailable() {
   if (pushUndo && getScore) {
     pushUndo(cloneScore(getScore()));
@@ -293,6 +299,35 @@ export function getGhostNoteInfo(event, noteElementMap) {
   };
 }
 
+/**
+ * Find all notes whose bounding boxes intersect a selection rectangle.
+ * Coordinates are in SVG space.
+ *
+ * @param {{ x: number, y: number, w: number, h: number }} rect
+ * @param {Array} noteElementMap
+ * @returns {Array<{staffIndex, measureIndex, noteIndex}>}
+ */
+export function getNotesInRect(rect, noteElementMap) {
+  const results = [];
+  for (const entry of noteElementMap) {
+    if (!entry.staveNote) continue;
+    try {
+      const bb = entry.staveNote.getBoundingBox();
+      const nx = bb.getX(), ny = bb.getY(), nw = bb.getW(), nh = bb.getH();
+      // Check intersection
+      if (nx + nw >= rect.x && nx <= rect.x + rect.w &&
+          ny + nh >= rect.y && ny <= rect.y + rect.h) {
+        results.push({
+          staffIndex: entry.staffIndex,
+          measureIndex: entry.measureIndex,
+          noteIndex: entry.noteIndex,
+        });
+      }
+    } catch (_) {}
+  }
+  return results;
+}
+
 // ---------------------------------------------------------------------------
 // Public API: mouse interaction
 // ---------------------------------------------------------------------------
@@ -331,22 +366,22 @@ export function handleScoreClick(event, noteElementMap) {
 
       const added = addNote(score, hit.staffIndex, hit.measureIndex, hit.noteIndex, note);
       if (added) {
-        setSelection({
+        setSelection([{
           staffIndex:   hit.staffIndex,
           measureIndex: hit.measureIndex,
           noteIndex:    hit.noteIndex,
-        });
+        }]);
         _notifyChange();
         return;
       }
     }
 
     // Select the clicked note (non-rest)
-    setSelection({
+    setSelection([{
       staffIndex:   hit.staffIndex,
       measureIndex: hit.measureIndex,
       noteIndex:    hit.noteIndex,
-    });
+    }]);
     _notifyChange();
     return;
   }
@@ -426,11 +461,11 @@ export function handleScoreClick(event, noteElementMap) {
   const added = addNote(score, closestStaff, closestMeasure, insertIndex, note);
 
   if (added) {
-    setSelection({
+    setSelection([{
       staffIndex:   closestStaff,
       measureIndex: closestMeasure,
       noteIndex:    insertIndex,
-    });
+    }]);
     _notifyChange();
   }
 }
@@ -452,7 +487,7 @@ export function insertNoteByKey(noteName) {
   if (!NOTE_NAMES.includes(name)) return;
 
   const score = getScore();
-  const sel   = getSelection();
+  const sel   = _primarySel();
 
   // Determine target staff and measure
   const staffIndex   = editorState.currentStaff;
@@ -481,7 +516,7 @@ export function insertNoteByKey(noteName) {
       ? score.staves[staffIndex].measures[measureIndex].notes.length - 1
       : noteIndex;
 
-    setSelection({ staffIndex, measureIndex, noteIndex: actualIndex });
+    setSelection([{ staffIndex, measureIndex, noteIndex: actualIndex }]);
     _notifyChange();
   }
 }
@@ -501,7 +536,7 @@ export function addToChord(noteName) {
   if (!NOTE_NAMES.includes(name)) return;
 
   const score = getScore();
-  const sel = getSelection();
+  const sel = _primarySel();
   if (!sel) return;
 
   const { staffIndex, measureIndex, noteIndex } = sel;
@@ -523,7 +558,7 @@ export function addToChordByClick(event, noteElementMap) {
   if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
 
   const score = getScore();
-  const sel = getSelection();
+  const sel = _primarySel();
   if (!sel) return;
 
   const note = score.staves[sel.staffIndex].measures[sel.measureIndex].notes[sel.noteIndex];
@@ -555,23 +590,34 @@ export function addToChordByClick(event, noteElementMap) {
 // Public API: delete selected note
 // ---------------------------------------------------------------------------
 
-/** Delete the currently selected note (replaces it with a rest if needed). */
+/** Delete all selected notes (replaces each with a rest if needed). */
 export function deleteSelectedNote() {
   if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
 
   const score = getScore();
-  const sel   = getSelection();
-  if (!sel) return;
+  const allSel = getSelection();
+  if (!allSel || (Array.isArray(allSel) && allSel.length === 0)) return;
 
-  const { staffIndex, measureIndex, noteIndex } = sel;
+  const sels = Array.isArray(allSel) ? [...allSel] : [allSel];
 
   _pushUndoIfAvailable();
 
-  const removed = removeNote(score, staffIndex, measureIndex, noteIndex);
-  if (removed) {
-    const measure = score.staves[staffIndex].measures[measureIndex];
-    const newIndex = Math.min(noteIndex, measure.notes.length - 1);
-    setSelection({ staffIndex, measureIndex, noteIndex: newIndex });
+  // Delete in reverse order so indices don't shift
+  sels.sort((a, b) =>
+    a.staffIndex !== b.staffIndex ? b.staffIndex - a.staffIndex :
+    a.measureIndex !== b.measureIndex ? b.measureIndex - a.measureIndex :
+    b.noteIndex - a.noteIndex
+  );
+
+  let anyRemoved = false;
+  for (const sel of sels) {
+    if (removeNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex)) {
+      anyRemoved = true;
+    }
+  }
+
+  if (anyRemoved) {
+    setSelection([]);
     _notifyChange();
   }
 }
@@ -590,10 +636,10 @@ export function navigateSelection(direction) {
   if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
 
   const score = getScore();
-  const sel   = getSelection();
+  const sel   = _primarySel();
   if (!sel) {
     // Nothing selected — select first note
-    setSelection({ staffIndex: 0, measureIndex: 0, noteIndex: 0 });
+    setSelection([{ staffIndex: 0, measureIndex: 0, noteIndex: 0 }]);
     _notifyChange();
     return;
   }
@@ -626,7 +672,7 @@ export function navigateSelection(direction) {
     }
   }
 
-  setSelection({ staffIndex, measureIndex, noteIndex });
+  setSelection([{ staffIndex, measureIndex, noteIndex }]);
   _notifyChange();
 }
 
@@ -654,7 +700,7 @@ export function toggleTie() {
   if (!getScore || !getSelection || !onScoreChange) return;
 
   const score = getScore();
-  const sel   = getSelection();
+  const sel   = _primarySel();
   if (!sel) return;
 
   const { staffIndex, measureIndex, noteIndex } = sel;
