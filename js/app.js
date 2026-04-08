@@ -8,6 +8,7 @@ import {
   insertNoteByKey, deleteSelectedNote, navigateSelection,
   changeOctave, toggleTie, switchStaff
 } from './editor.js';
+import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
 
 const state = {
   score: null,
@@ -323,14 +324,77 @@ function setupFileActions() {
     render();
   });
   document.getElementById('btn-save').addEventListener('click', () => {
-    console.log('Save — not yet wired');
+    const id = saveScoreToStorage(state.score);
+    alert(`Score saved (id: ${id})`);
   });
   document.getElementById('btn-load').addEventListener('click', () => {
-    console.log('Load — not yet wired');
+    showLoadDialog();
   });
   document.getElementById('btn-export').addEventListener('click', () => {
-    console.log('Export — not yet wired');
+    exportScoreAsJSON(state.score);
   });
+  document.getElementById('load-dialog-cancel').addEventListener('click', () => {
+    document.getElementById('load-dialog').close();
+  });
+}
+
+function showLoadDialog() {
+  const scores = getAllScores();
+  const list = document.getElementById('saved-scores-list');
+  list.innerHTML = '';
+
+  const ids = Object.keys(scores);
+  if (ids.length === 0) {
+    const empty = document.createElement('li');
+    empty.textContent = 'No saved scores found.';
+    empty.className = 'load-empty';
+    list.appendChild(empty);
+  } else {
+    ids.forEach(id => {
+      const entry = scores[id];
+      const li = document.createElement('li');
+      li.className = 'load-entry';
+
+      const info = document.createElement('span');
+      info.className = 'load-entry-info';
+      info.textContent = `${entry.title || 'Untitled'} — ${entry.composer || ''}`;
+      if (entry._savedAt) {
+        const date = new Date(entry._savedAt).toLocaleString();
+        info.title = `Saved: ${date}`;
+      }
+      info.style.cursor = 'pointer';
+      info.addEventListener('click', () => {
+        const loaded = loadScoreFromStorage(id);
+        if (loaded) {
+          // Strip internal storage metadata before restoring
+          delete loaded._savedAt;
+          state.score = loaded;
+          state.selection = null;
+          state.undoStack = [];
+          state.redoStack = [];
+          document.getElementById('load-dialog').close();
+          render();
+        }
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.textContent = 'Delete';
+      delBtn.className = 'load-entry-delete';
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (confirm(`Delete "${entry.title || id}"?`)) {
+          deleteScoreFromStorage(id);
+          showLoadDialog(); // refresh list
+        }
+      });
+
+      li.appendChild(info);
+      li.appendChild(delBtn);
+      list.appendChild(li);
+    });
+  }
+
+  document.getElementById('load-dialog').showModal();
 }
 
 function init() {
