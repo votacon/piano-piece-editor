@@ -259,7 +259,7 @@ export function removeMeasure(score) {
   return true;
 }
 
-function fillMeasureWithRests(measure, totalBeats) {
+export function fillMeasureWithRests(measure, totalBeats) {
   let current = measureDuration(measure);
   const sortedDurations = ['w', 'h', 'q', '8', '16'];
 

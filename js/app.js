@@ -7,7 +7,8 @@ import {
   toggleRestMode, toggleDynamics, handleScoreClick,
   insertNoteByKey, deleteSelectedNote, navigateSelection,
   changeOctave, toggleTie, switchStaff, getGhostNoteInfo,
-  addToChord, addToChordByClick, getNotesInRect
+  addToChord, addToChordByClick, getNotesInRect,
+  copySelection, cutSelection, pasteAtSelection
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
 import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
@@ -304,6 +305,20 @@ function setupScoreClick() {
   }
 }
 
+function showToast(message) {
+  let toast = document.getElementById('clipboard-toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'clipboard-toast';
+    toast.className = 'clipboard-toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add('visible');
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => toast.classList.remove('visible'), 1200);
+}
+
 function setupKeyboard() {
   document.addEventListener('keydown', (e) => {
     if (e.target.isContentEditable || e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') {
@@ -338,6 +353,27 @@ function setupKeyboard() {
         state.selection = [];
         render();
       }
+      return;
+    }
+
+    // Ctrl+C — copy selection
+    if (ctrl && !shift && key === 'c') {
+      e.preventDefault();
+      if (copySelection()) showToast('Copied');
+      return;
+    }
+
+    // Ctrl+X — cut selection
+    if (ctrl && !shift && key === 'x') {
+      e.preventDefault();
+      if (cutSelection()) showToast('Cut');
+      return;
+    }
+
+    // Ctrl+V — paste
+    if (ctrl && !shift && key === 'v') {
+      e.preventDefault();
+      pasteAtSelection();
       return;
     }
 

@@ -3,7 +3,8 @@ import {
   createNote, createRest, addNote, removeNote, replaceNote,
   addKeyToNote, removeKeyFromNote,
   DURATION_VALUES, NOTE_NAMES, parseKey, buildKey, yToKey,
-  addMeasure, cloneScore, keyToMidi
+  addMeasure, cloneScore, keyToMidi,
+  measureDuration, fillMeasureWithRests
 } from './score-model.js';
 
 // ---------------------------------------------------------------------------
@@ -734,4 +735,117 @@ export function switchStaff() {
   editorState.currentStaff = editorState.currentStaff === 0 ? 1 : 0;
   // Restore the saved octave for the target staff
   editorState.currentOctave = _savedOctave[editorState.currentStaff];
+}
+
+// ---------------------------------------------------------------------------
+// Public API: clipboard (copy / cut / paste)
+// ---------------------------------------------------------------------------
+
+let clipboard = null;
+
+/** Copy currently selected notes to the internal clipboard. */
+export function copySelection() {
+  if (!getScore || !getSelection) return;
+
+  const score = getScore();
+  const sel = getSelection();
+  if (!Array.isArray(sel) || sel.length === 0) return;
+
+  // Sort in document order
+  const sorted = [...sel].sort((a, b) =>
+    a.staffIndex !== b.staffIndex ? a.staffIndex - b.staffIndex :
+    a.measureIndex !== b.measureIndex ? a.measureIndex - b.measureIndex :
+    a.noteIndex - b.noteIndex
+  );
+
+  // Take only notes from the first staff in the selection
+  const targetStaff = sorted[0].staffIndex;
+  const staffSel = sorted.filter(s => s.staffIndex === targetStaff);
+
+  const notes = [];
+  for (const s of staffSel) {
+    const measure = score.staves[s.staffIndex].measures[s.measureIndex];
+    if (measure && measure.notes[s.noteIndex]) {
+      notes.push(JSON.parse(JSON.stringify(measure.notes[s.noteIndex])));
+    }
+  }
+
+  if (notes.length === 0) return false;
+  clipboard = { notes };
+  return true;
+}
+
+/** Paste clipboard contents starting at the current selection position. */
+export function pasteAtSelection() {
+  if (!clipboard || clipboard.notes.length === 0) return;
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+
+  const sel = _primarySel();
+  if (!sel) return;
+
+  _pushUndoIfAvailable();
+
+  const score = getScore();
+  const beats = score.timeSignature.beats;
+  const staffIdx = sel.staffIndex;
+  const numMeasures = score.staves[staffIdx].measures.length;
+
+  let mi = sel.measureIndex;
+  let ni = sel.noteIndex;
+  const pastedPositions = [];
+  const affectedMeasures = new Set();
+
+  for (const clipNote of clipboard.notes) {
+    // Advance if past end of current measure
+    while (mi < numMeasures && ni >= score.staves[staffIdx].measures[mi].notes.length) {
+      mi++;
+      ni = 0;
+    }
+    if (mi >= numMeasures) break;
+
+    const measure = score.staves[staffIdx].measures[mi];
+
+    // Expand a single whole rest into beat-sized rests so paste has slots
+    if (measure.notes.length === 1 && measure.notes[0].type === 'rest' && measure.notes[0].duration === 'w') {
+      measure.notes = [];
+      fillMeasureWithRests(measure, beats);
+      ni = 0;
+    }
+
+    measure.notes[ni] = JSON.parse(JSON.stringify(clipNote));
+
+    pastedPositions.push({ staffIndex: staffIdx, measureIndex: mi, noteIndex: ni });
+    affectedMeasures.add(mi);
+    ni++;
+  }
+
+  // Rebalance affected measures
+  for (const measIdx of affectedMeasures) {
+    const measure = score.staves[staffIdx].measures[measIdx];
+    const dur = measureDuration(measure);
+
+    if (dur > beats) {
+      // Trim trailing rests
+      while (measure.notes.length > 1 && measureDuration(measure) > beats) {
+        const last = measure.notes[measure.notes.length - 1];
+        if (last.type === 'rest') {
+          measure.notes.pop();
+        } else {
+          break;
+        }
+      }
+    } else if (dur < beats) {
+      fillMeasureWithRests(measure, beats);
+    }
+  }
+
+  setSelection(pastedPositions);
+  _notifyChange();
+}
+
+/** Cut: copy selection to clipboard, then delete (replace with rests). */
+export function cutSelection() {
+  if (!copySelection()) return false;
+  deleteSelectedNote();
+  return true;
 }
