@@ -6,7 +6,7 @@ let vfContext = null;
 let noteElementMap = [];
 
 const LAYOUT = {
-  leftPadding: 10,
+  leftPadding: 25,
   topPadding: 20,
   staffWidth: 250,
   firstMeasureExtra: 80,
@@ -14,7 +14,7 @@ const LAYOUT = {
   systemGap: 60,
   staffHeight: 100,
   measuresPerLine: 3,
-  maxWidth: 820,
+  maxWidth: 885,
 };
 
 export function initRenderer(container) {
@@ -118,8 +118,9 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
     const dottedSuffix = noteData.dotted ? 'd' : '';
 
     if (noteData.type === 'rest') {
+      const restKey = staff.clef === 'bass' ? 'd/3' : 'b/4';
       vfNote = new VF.StaveNote({
-        keys: ['b/4'],
+        keys: [restKey],
         duration: noteData.duration + dottedSuffix + 'r',
         clef: staff.clef,
       });
