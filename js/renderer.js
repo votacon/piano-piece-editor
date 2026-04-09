@@ -115,16 +115,18 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
 
     let vfNote;
 
+    const dottedSuffix = noteData.dotted ? 'd' : '';
+
     if (noteData.type === 'rest') {
       vfNote = new VF.StaveNote({
         keys: ['b/4'],
-        duration: noteData.duration + 'r',
+        duration: noteData.duration + dottedSuffix + 'r',
         clef: staff.clef,
       });
     } else {
       vfNote = new VF.StaveNote({
         keys: noteData.keys,
-        duration: noteData.duration,
+        duration: noteData.duration + dottedSuffix,
         clef: staff.clef,
         auto_stem: true,
       });
@@ -140,9 +142,9 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
       }
     }
 
-    // Add dot for dotted notes
+    // Add dot modifier for dotted notes
     if (noteData.dotted) {
-      vfNote.addDot(0);
+      VF.Dot.buildAndAttach([vfNote], { all: true });
     }
 
     if (isSelected) {
