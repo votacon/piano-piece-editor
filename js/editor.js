@@ -528,11 +528,15 @@ export function insertNoteByKey(noteName) {
     if (selNote && selNote.type === 'rest') {
       const key  = buildKey(name, editorState.currentAccidental, editorState.currentOctave);
       const note = _buildNoteFromState(key);
-      // Use the rest's duration if no explicit duration change
-      note.duration = editorState.currentDuration;
 
       _pushUndoIfAvailable();
-      if (replaceNote(score, staffIndex, sel.measureIndex, sel.noteIndex, note)) {
+
+      // Remove the selected rest
+      selMeasure.notes.splice(sel.noteIndex, 1);
+
+      // Use addNote which handles making room by removing adjacent rests
+      const added = addNote(score, staffIndex, sel.measureIndex, sel.noteIndex, note);
+      if (added) {
         fillMeasureWithRests(selMeasure, score.timeSignature.beats);
         setSelection([{ staffIndex, measureIndex: sel.measureIndex, noteIndex: sel.noteIndex }]);
         _recordAction('insertNote', { noteName: name });
