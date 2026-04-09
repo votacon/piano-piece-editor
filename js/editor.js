@@ -555,7 +555,12 @@ export function insertNoteByKey(noteName) {
 // Public API: insert rest
 // ---------------------------------------------------------------------------
 
-/** Replace the selected note with a rest of the same duration. */
+/**
+ * R key behavior:
+ * - Selected note → replace with rest of same duration
+ * - Selected rest → replace with rest of current duration (from toolbar 1-5),
+ *   rebalancing the measure
+ */
 export function insertRest() {
   if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
 
@@ -565,14 +570,24 @@ export function insertRest() {
 
   const measure = score.staves[sel.staffIndex].measures[sel.measureIndex];
   const note = measure.notes[sel.noteIndex];
-  if (!note || note.type === 'rest') return;
+  if (!note) return;
 
   _pushUndoIfAvailable();
 
-  const rest = createRest(note.duration);
-  if (note.dotted) rest.dotted = true;
-  replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, rest);
-  _notifyChange();
+  if (note.type === 'rest') {
+    // Replace rest with a rest of the currently selected duration
+    const newRest = createRest(editorState.currentDuration);
+    if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newRest)) {
+      fillMeasureWithRests(measure, score.timeSignature.beats);
+      _notifyChange();
+    }
+  } else {
+    // Replace note with a rest of the same duration
+    const rest = createRest(note.duration);
+    if (note.dotted) rest.dotted = true;
+    replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, rest);
+    _notifyChange();
+  }
 }
 
 // ---------------------------------------------------------------------------
