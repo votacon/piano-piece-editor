@@ -76,7 +76,7 @@ function syncToolbar() {
   document.getElementById('btn-redo').disabled = !canRedo();
 
   const statusOctave = document.getElementById('status-octave');
-  if (statusOctave) statusOctave.textContent = 'Oct ' + es.currentOctave;
+  if (statusOctave) statusOctave.textContent = es.currentOctave;
   const statusStaff = document.getElementById('status-staff');
   if (statusStaff) statusStaff.textContent = es.currentStaff === 0 ? 'Treble' : 'Bass';
 }

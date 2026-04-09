@@ -129,24 +129,33 @@ html, body {
   font-family: 'Times New Roman', Times, serif;
 }
 
+#status-indicator {
+  border-right: 1px solid #3a3a6e;
+  padding-right: 12px;
+  margin-right: 4px;
+  gap: 4px;
+}
+
 .status-label {
   color: #9ca3af;
-  font-size: 0.8rem;
-  padding: 4px 8px;
+  font-size: 0.85rem;
+  padding: 4px 10px;
   border: 1px solid #2a2a4e;
   border-radius: 4px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.3px;
   user-select: none;
 }
 
 .status-octave {
-  color: #7c9fdb;
-  background: #1a1a3e;
-  border-color: #3a3a6e;
-  min-width: 44px;
+  color: #e0e0e0;
+  background: #533483;
+  border-color: #7c52b8;
+  font-size: 1rem;
+  min-width: 28px;
   text-align: center;
   display: inline-block;
+  padding: 3px 10px;
 }
 
 /* --- Zone 3: Score Area --- */
