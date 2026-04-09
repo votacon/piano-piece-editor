@@ -24,6 +24,7 @@ export const editorState = {
   dotted: false,
   currentOctave: 4,
   currentStaff: 0,
+  chordMode: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -95,6 +96,16 @@ export function toggleInsertMode() {
 /** Toggle overwrite mode on/off (letter keys replace selected note pitch). */
 export function toggleOverwriteMode() {
   editorState.overwriteMode = !editorState.overwriteMode;
+}
+
+/** Check if chord-symbol input mode is active. */
+export function isChordMode() {
+  return editorState.chordMode;
+}
+
+/** Set chord-symbol input mode on/off. */
+export function setChordMode(active) {
+  editorState.chordMode = !!active;
 }
 
 /** Toggle dotted-note mode on/off. */
@@ -218,3 +229,7 @@ export {
   copySelection, cutSelection, pasteAtSelection,
   duplicateSelection
 } from './editor-clipboard.js';
+
+export {
+  enterChordMode, exitChordMode
+} from './editor-chord.js';

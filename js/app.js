@@ -13,7 +13,8 @@ import {
   changeDurationOfSelected, changeAccidentalOfSelected, changeOctaveOfSelected,
   changePitchOfSelected, extendSelection, navigateToMeasure, selectMeasure,
   navigateToStart, navigateToEnd, duplicateSelection, transposeSelection,
-  toggleDot, repeatLastAction
+  toggleDot, repeatLastAction,
+  enterChordMode, exitChordMode, isChordMode
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
 import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
@@ -641,6 +642,15 @@ function setupKeyboard() {
       return;
     }
 
+    // Enter — enter chord symbol mode
+    if (!ctrl && !shift && !alt && key === 'Enter') {
+      e.preventDefault();
+      if (hasSel) {
+        enterChordMode(document.getElementById('score-container'));
+      }
+      return;
+    }
+
     if (key === ' ') {
       e.preventDefault();
       togglePlayback();
@@ -669,6 +679,7 @@ function setupKeyboard() {
 }
 
 function togglePlayback() {
+  if (isChordMode()) exitChordMode(true);
   const container = document.getElementById('score-container');
   if (getIsPlaying()) {
     stopPlayback();

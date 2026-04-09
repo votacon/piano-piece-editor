@@ -494,3 +494,22 @@ dialog h3 {
   cursor: pointer;
   font-size: 0.75rem;
 }
+
+/* --- Chord Symbol Input --- */
+.chord-input {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.95);
+  border: none;
+  border-bottom: 2px solid #2563eb;
+  outline: none;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+  width: 64px;
+  padding: 2px 4px;
+  z-index: 15;
+  caret-color: #2563eb;
+  border-radius: 2px 2px 0 0;
+}

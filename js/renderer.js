@@ -147,6 +147,14 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
       VF.Dot.buildAndAttach([vfNote], { all: true });
     }
 
+    // Chord symbol annotation (treble staff only)
+    if (staffIndex === 0 && noteData.chordSymbol) {
+      const annotation = new VF.Annotation(noteData.chordSymbol);
+      annotation.setFont('Arial', 12, 'bold');
+      annotation.setVerticalJustification(VF.Annotation.VerticalJustify.TOP);
+      vfNote.addModifier(annotation);
+    }
+
     if (isSelected) {
       vfNote.setStyle({ fillStyle: '#2563eb', strokeStyle: '#2563eb' });
     }
