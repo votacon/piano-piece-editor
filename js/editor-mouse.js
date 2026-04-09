@@ -46,13 +46,19 @@ function _hitTest(event, noteElementMap) {
   }
 
   // Second pass: find the stave row containing the click, then pick closest note
+  // Only match if click is within the horizontal bounds of a stave
   let bestEntry = null;
   let bestDist  = Infinity;
 
   for (const entry of noteElementMap) {
     if (!entry.stave) continue;
+    const staveX = entry.stave.getX();
+    const staveW = entry.stave.getWidth();
     const staveY = entry.stave.getY();
     const staveH = entry.stave.getHeight();
+
+    // Must be within horizontal bounds of the stave
+    if (mx < staveX || mx > staveX + staveW) continue;
 
     // Generous vertical band: stave height + half the gap above/below
     if (my < staveY - staveH * 0.5 || my > staveY + staveH * 1.5) continue;
@@ -276,12 +282,13 @@ export function handleScoreClick(event, noteElementMap) {
     }
   }
 
-  const minVertDist = bestScore >= 10000 ? bestScore - 10000 : bestScore;
-
   if (closestStaff === null || closestStaveObj === null) return;
 
-  // Only insert when click is reasonably close to a stave (within ~60px)
-  if (minVertDist > 60) return;
+  // Don't insert when click is outside the horizontal bounds of any stave
+  if (bestScore >= 10000) return;
+
+  // Only insert when click is reasonably close to a stave vertically (within ~60px)
+  if (bestScore > 60) return;
 
   const clef = score.staves[closestStaff].clef;
   const key  = _yToKeyFromStave(my, closestStaveObj, clef);
