@@ -806,6 +806,21 @@ export function switchStaff() {
   editorState.currentStaff = editorState.currentStaff === 0 ? 1 : 0;
   // Restore the saved octave for the target staff
   editorState.currentOctave = _savedOctave[editorState.currentStaff];
+
+  // Move selection to the same position in the other staff
+  if (getScore && getSelection && setSelection && onScoreChange) {
+    const score = getScore();
+    const sel = _primarySel();
+    if (sel) {
+      const targetStaff = editorState.currentStaff;
+      const measure = score.staves[targetStaff].measures[sel.measureIndex];
+      if (measure) {
+        const noteIndex = Math.min(sel.noteIndex, measure.notes.length - 1);
+        setSelection([{ staffIndex: targetStaff, measureIndex: sel.measureIndex, noteIndex: Math.max(0, noteIndex) }]);
+        _notifyChange();
+      }
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
