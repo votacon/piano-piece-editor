@@ -1323,44 +1323,62 @@ export function pasteAtSelection() {
   const score = getScore();
   const beats = score.timeSignature.beats;
   const staffIdx = sel.staffIndex;
-  const numMeasures = score.staves[staffIdx].measures.length;
 
   let mi = sel.measureIndex;
   let ni = sel.noteIndex;
   const pastedPositions = [];
-  const affectedMeasures = new Set();
 
   for (const clipNote of clipboard.notes) {
-    // Advance if past end of current measure
-    while (mi < numMeasures && ni >= score.staves[staffIdx].measures[mi].notes.length) {
-      mi++;
-      ni = 0;
-    }
-    if (mi >= numMeasures) break;
+    if (mi >= score.staves[staffIdx].measures.length) break;
 
     const measure = score.staves[staffIdx].measures[mi];
 
-    // Expand a single whole rest into beat-sized rests so paste has slots
+    // Expand a single whole rest into individual quarter rests
     if (measure.notes.length === 1 && measure.notes[0].type === 'rest' && measure.notes[0].duration === 'w') {
+      const beatDur = beats <= 2 ? 'h' : 'q';
+      const count = Math.round(beats / (DURATION_VALUES[beatDur]));
       measure.notes = [];
-      fillMeasureWithRests(measure, beats);
+      for (let i = 0; i < count; i++) {
+        measure.notes.push(createRest(beatDur));
+      }
       ni = 0;
     }
 
-    measure.notes[ni] = JSON.parse(JSON.stringify(clipNote));
+    // Advance if past end of current measure
+    if (ni >= measure.notes.length) {
+      mi++;
+      ni = 0;
+      if (mi >= score.staves[staffIdx].measures.length) break;
+      // Expand next measure too if needed
+      const nextMeasure = score.staves[staffIdx].measures[mi];
+      if (nextMeasure.notes.length === 1 && nextMeasure.notes[0].type === 'rest' && nextMeasure.notes[0].duration === 'w') {
+        const beatDur = beats <= 2 ? 'h' : 'q';
+        const count = Math.round(beats / (DURATION_VALUES[beatDur]));
+        nextMeasure.notes = [];
+        for (let i = 0; i < count; i++) {
+          nextMeasure.notes.push(createRest(beatDur));
+        }
+      }
+    }
+
+    if (mi >= score.staves[staffIdx].measures.length) break;
+    const targetMeasure = score.staves[staffIdx].measures[mi];
+    if (ni >= targetMeasure.notes.length) continue;
+
+    // Replace the note/rest at the current position
+    targetMeasure.notes[ni] = JSON.parse(JSON.stringify(clipNote));
 
     pastedPositions.push({ staffIndex: staffIdx, measureIndex: mi, noteIndex: ni });
-    affectedMeasures.add(mi);
     ni++;
   }
 
-  // Rebalance affected measures
+  // Rebalance all affected measures
+  const affectedMeasures = new Set(pastedPositions.map(p => p.measureIndex));
   for (const measIdx of affectedMeasures) {
     const measure = score.staves[staffIdx].measures[measIdx];
     const dur = measureDuration(measure);
 
     if (dur > beats) {
-      // Trim trailing rests
       while (measure.notes.length > 1 && measureDuration(measure) > beats) {
         const last = measure.notes[measure.notes.length - 1];
         if (last.type === 'rest') {
