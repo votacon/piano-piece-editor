@@ -1323,72 +1323,96 @@ export function pasteAtSelection() {
   const score = getScore();
   const beats = score.timeSignature.beats;
   const staffIdx = sel.staffIndex;
+  const staff = score.staves[staffIdx];
 
+  // Flatten clipboard notes into a sequence with their durations
+  const clipNotes = clipboard.notes.map(n => JSON.parse(JSON.stringify(n)));
+
+  // Build a flat timeline: all notes from paste point onward across measures
+  // We'll remove enough beats to fit the clipboard, then splice in clipboard notes
   let mi = sel.measureIndex;
   let ni = sel.noteIndex;
-  const pastedPositions = [];
 
-  for (const clipNote of clipboard.notes) {
-    if (mi >= score.staves[staffIdx].measures.length) break;
+  // Remove notes/rests from paste point to make room for clipboard beats
+  let clipBeats = clipNotes.reduce((sum, n) => {
+    let d = DURATION_VALUES[n.duration] || 0;
+    if (n.dotted) d *= 1.5;
+    return sum + d;
+  }, 0);
 
-    const measure = score.staves[staffIdx].measures[mi];
+  let removedBeats = 0;
+  let removeMi = mi;
+  let removeNi = ni;
 
-    // Expand a single whole rest into individual quarter rests
+  while (removedBeats < clipBeats - 0.001 && removeMi < staff.measures.length) {
+    const measure = staff.measures[removeMi];
+
+    // Expand whole rest into individual rests so we can remove them granularly
     if (measure.notes.length === 1 && measure.notes[0].type === 'rest' && measure.notes[0].duration === 'w') {
       const beatDur = beats <= 2 ? 'h' : 'q';
-      const count = Math.round(beats / (DURATION_VALUES[beatDur]));
+      const beatVal = DURATION_VALUES[beatDur];
+      const count = Math.round(beats / beatVal);
       measure.notes = [];
-      for (let i = 0; i < count; i++) {
-        measure.notes.push(createRest(beatDur));
-      }
-      ni = 0;
+      for (let i = 0; i < count; i++) measure.notes.push(createRest(beatDur));
+      if (removeMi === mi) ni = Math.min(ni, measure.notes.length - 1);
     }
 
-    // Advance if past end of current measure
-    if (ni >= measure.notes.length) {
-      mi++;
-      ni = 0;
-      if (mi >= score.staves[staffIdx].measures.length) break;
-      // Expand next measure too if needed
-      const nextMeasure = score.staves[staffIdx].measures[mi];
-      if (nextMeasure.notes.length === 1 && nextMeasure.notes[0].type === 'rest' && nextMeasure.notes[0].duration === 'w') {
-        const beatDur = beats <= 2 ? 'h' : 'q';
-        const count = Math.round(beats / (DURATION_VALUES[beatDur]));
-        nextMeasure.notes = [];
-        for (let i = 0; i < count; i++) {
-          nextMeasure.notes.push(createRest(beatDur));
-        }
-      }
+    while (removeNi < measure.notes.length && removedBeats < clipBeats - 0.001) {
+      const n = measure.notes[removeNi];
+      let d = DURATION_VALUES[n.duration] || 0;
+      if (n.dotted) d *= 1.5;
+      removedBeats += d;
+      measure.notes.splice(removeNi, 1);
     }
 
-    if (mi >= score.staves[staffIdx].measures.length) break;
-    const targetMeasure = score.staves[staffIdx].measures[mi];
-    if (ni >= targetMeasure.notes.length) continue;
-
-    // Replace the note/rest at the current position
-    targetMeasure.notes[ni] = JSON.parse(JSON.stringify(clipNote));
-
-    pastedPositions.push({ staffIndex: staffIdx, measureIndex: mi, noteIndex: ni });
-    ni++;
+    if (removedBeats < clipBeats - 0.001) {
+      removeMi++;
+      removeNi = 0;
+    }
   }
 
-  // Rebalance all affected measures
-  const affectedMeasures = new Set(pastedPositions.map(p => p.measureIndex));
-  for (const measIdx of affectedMeasures) {
-    const measure = score.staves[staffIdx].measures[measIdx];
-    const dur = measureDuration(measure);
+  // Insert clipboard notes at the paste position
+  const pastedPositions = [];
+  let insertMi = mi;
+  let insertNi = ni;
 
-    if (dur > beats) {
-      while (measure.notes.length > 1 && measureDuration(measure) > beats) {
-        const last = measure.notes[measure.notes.length - 1];
-        if (last.type === 'rest') {
-          measure.notes.pop();
-        } else {
-          break;
-        }
+  for (const clipNote of clipNotes) {
+    if (insertMi >= staff.measures.length) break;
+
+    const measure = staff.measures[insertMi];
+    measure.notes.splice(insertNi, 0, clipNote);
+
+    pastedPositions.push({ staffIndex: staffIdx, measureIndex: insertMi, noteIndex: insertNi });
+    insertNi++;
+
+    // Check if measure is now full — move to next measure
+    if (measureDuration(measure) >= beats - 0.001) {
+      // Fill if slightly under
+      if (measureDuration(measure) < beats - 0.001) {
+        fillMeasureWithRests(measure, beats);
       }
-    } else if (dur < beats) {
+      insertMi++;
+      insertNi = 0;
+    }
+  }
+
+  // Rebalance affected measures
+  for (let m = mi; m <= Math.min(removeMi, staff.measures.length - 1); m++) {
+    const measure = staff.measures[m];
+    const dur = measureDuration(measure);
+    if (dur < beats - 0.001) {
       fillMeasureWithRests(measure, beats);
+    } else if (dur > beats + 0.001) {
+      // Trim trailing rests
+      while (measure.notes.length > 1 && measureDuration(measure) > beats + 0.001) {
+        if (measure.notes[measure.notes.length - 1].type === 'rest') {
+          measure.notes.pop();
+        } else break;
+      }
+    }
+    // Collapse to whole rest if all rests
+    if (measure.notes.every(n => n.type === 'rest')) {
+      measure.notes = [createRest('w')];
     }
   }
 
