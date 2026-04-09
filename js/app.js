@@ -89,7 +89,7 @@ function undo() {
   const restored = undoAction(state.score);
   if (restored === null) return;
   state.score = restored;
-  state.selection = [];
+  _clampSelection();
   render();
 }
 
@@ -97,8 +97,20 @@ function redo() {
   const restored = redoAction(state.score);
   if (restored === null) return;
   state.score = restored;
-  state.selection = [];
+  _clampSelection();
   render();
+}
+
+/** Keep current selection but clamp indices to valid range after score change. */
+function _clampSelection() {
+  state.selection = state.selection.map(sel => {
+    const staff = state.score.staves[sel.staffIndex];
+    if (!staff) return null;
+    const mi = Math.min(sel.measureIndex, staff.measures.length - 1);
+    const measure = staff.measures[mi];
+    const ni = Math.min(sel.noteIndex, measure.notes.length - 1);
+    return { staffIndex: sel.staffIndex, measureIndex: mi, noteIndex: Math.max(0, ni) };
+  }).filter(Boolean);
 }
 
 function setupToolbar() {
