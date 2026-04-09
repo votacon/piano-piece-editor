@@ -16,7 +16,7 @@ import {
   toggleDot, repeatLastAction,
   enterChordMode, exitChordMode, isChordMode
 } from './editor.js';
-import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON } from './storage.js';
+import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON, loadUserPrefs, saveUserPrefs } from './storage.js';
 import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
 
 const state = {
@@ -178,6 +178,8 @@ function setupToolbar() {
     if (val >= 20 && val <= 300) {
       pushUndo();
       state.score.tempo = val;
+      saveUserPrefs({ bpm: val });
+      autoSave();
     }
   });
   document.getElementById('score-title').addEventListener('blur', (e) => {
@@ -713,7 +715,9 @@ function setupPlayback() {
     document.getElementById('progress-fill').style.width = '0%';
   });
   document.getElementById('volume-slider').addEventListener('input', (e) => {
-    setVolume(parseInt(e.target.value, 10) / 100);
+    const vol = parseInt(e.target.value, 10);
+    setVolume(vol / 100);
+    saveUserPrefs({ volume: vol });
   });
 
   initPlayback({
@@ -931,6 +935,16 @@ function init() {
   setupKeyboard();
   setupFileActions();
   setupPlayback();
+
+  // Apply saved user preferences (volume, BPM)
+  const prefs = loadUserPrefs();
+  if (typeof prefs.volume === 'number') {
+    document.getElementById('volume-slider').value = prefs.volume;
+    setVolume(prefs.volume / 100);
+  }
+  if (typeof prefs.bpm === 'number' && prefs.bpm >= 20 && prefs.bpm <= 300) {
+    state.score.tempo = prefs.bpm;
+  }
 
   setInterval(autoSave, 30000);
 

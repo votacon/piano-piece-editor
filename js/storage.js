@@ -1,6 +1,34 @@
 // storage.js — localStorage persistence and JSON export
 
 const STORAGE_KEY = 'piano-piece-editor-scores';
+const PREFS_KEY   = 'piano-piece-editor-prefs';
+
+/**
+ * Returns saved user preferences (volume, etc.) or an empty object.
+ * @returns {Object}
+ */
+export function loadUserPrefs() {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Merges the given prefs object into the stored user preferences.
+ * @param {Object} partial
+ */
+export function saveUserPrefs(partial) {
+  const current = loadUserPrefs();
+  const merged = { ...current, ...partial };
+  try {
+    localStorage.setItem(PREFS_KEY, JSON.stringify(merged));
+  } catch (e) {
+    console.error('Failed to save user prefs:', e);
+  }
+}
 
 /**
  * Returns all stored scores as an object keyed by id.
