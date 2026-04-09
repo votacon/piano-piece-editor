@@ -521,6 +521,27 @@ export function insertNoteByKey(noteName) {
     noteIndex    = -1; // append
   }
 
+  // If selected note is a rest, replace it instead of inserting after
+  if (sel && sel.staffIndex === staffIndex) {
+    const selMeasure = score.staves[staffIndex].measures[sel.measureIndex];
+    const selNote = selMeasure && selMeasure.notes[sel.noteIndex];
+    if (selNote && selNote.type === 'rest') {
+      const key  = buildKey(name, editorState.currentAccidental, editorState.currentOctave);
+      const note = _buildNoteFromState(key);
+      // Use the rest's duration if no explicit duration change
+      note.duration = editorState.currentDuration;
+
+      _pushUndoIfAvailable();
+      if (replaceNote(score, staffIndex, sel.measureIndex, sel.noteIndex, note)) {
+        fillMeasureWithRests(selMeasure, score.timeSignature.beats);
+        setSelection([{ staffIndex, measureIndex: sel.measureIndex, noteIndex: sel.noteIndex }]);
+        _recordAction('insertNote', { noteName: name });
+        _notifyChange();
+      }
+      return;
+    }
+  }
+
   // Clamp to valid range
   const numMeasures = score.staves[staffIndex].measures.length;
   if (measureIndex >= numMeasures) measureIndex = numMeasures - 1;
