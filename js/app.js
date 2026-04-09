@@ -78,7 +78,7 @@ function syncToolbar() {
   const statusOctave = document.getElementById('status-octave');
   if (statusOctave) statusOctave.textContent = es.currentOctave;
   const statusStaff = document.getElementById('status-staff');
-  if (statusStaff) statusStaff.textContent = es.currentStaff === 0 ? 'Treble' : 'Bass';
+  if (statusStaff) statusStaff.textContent = es.currentStaff === 0 ? '\uD834\uDD1E' : '\uD834\uDD22';
 }
 
 function pushUndo() {

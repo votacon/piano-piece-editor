@@ -25,12 +25,6 @@
 
     <!-- Zone 2: Toolbar -->
     <div id="toolbar">
-      <!-- Status indicator -->
-      <div class="tool-group" id="status-indicator">
-        <span class="status-label" id="status-staff" title="Staff ativo (Tab)">Treble</span>
-        <span class="status-label status-octave" id="status-octave" title="Oitava (Shift+Up/Down)">4</span>
-      </div>
-
       <!-- Duration group -->
       <div class="tool-group">
         <span class="tool-label">DURATION:</span>
@@ -89,6 +83,14 @@
 
     <!-- Zone 3: Score Area -->
     <div id="score-area">
+      <div id="status-indicator">
+        <div id="status-staff" title="Clave ativa (Tab)">𝄞</div>
+        <div class="status-divider"></div>
+        <div id="status-octave-group">
+          <div class="status-hint">Oitava</div>
+          <div id="status-octave" title="Oitava (Shift+Up/Down)">4</div>
+        </div>
+      </div>
       <div id="score-header">
         <div id="score-title" contenteditable="true" spellcheck="false">Untitled</div>
         <div id="score-composer" contenteditable="true" spellcheck="false">Composer</div>

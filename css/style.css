@@ -129,35 +129,6 @@ html, body {
   font-family: 'Times New Roman', Times, serif;
 }
 
-#status-indicator {
-  border-right: 1px solid #3a3a6e;
-  padding-right: 12px;
-  margin-right: 4px;
-  gap: 4px;
-}
-
-.status-label {
-  color: #9ca3af;
-  font-size: 0.85rem;
-  padding: 4px 10px;
-  border: 1px solid #2a2a4e;
-  border-radius: 4px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  user-select: none;
-}
-
-.status-octave {
-  color: #e0e0e0;
-  background: #533483;
-  border-color: #7c52b8;
-  font-size: 1rem;
-  min-width: 28px;
-  text-align: center;
-  display: inline-block;
-  padding: 3px 10px;
-}
-
 /* --- Zone 3: Score Area --- */
 #score-area {
   flex: 1;
@@ -165,6 +136,58 @@ html, body {
   background: #f5f0e8;
   color: #333;
   padding: 24px;
+  position: relative;
+}
+
+#status-indicator {
+  position: fixed;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1a1a3e;
+  border: 1px solid #3a3a6e;
+  border-radius: 10px;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 20;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  user-select: none;
+}
+
+#status-staff {
+  font-size: 2rem;
+  line-height: 1;
+  color: #e0e0e0;
+}
+
+.status-divider {
+  width: 30px;
+  height: 1px;
+  background: #3a3a6e;
+}
+
+#status-octave-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.status-hint {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #7c9fdb;
+  font-weight: 600;
+}
+
+#status-octave {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #e0e0e0;
+  line-height: 1.2;
 }
 
 #score-header {
