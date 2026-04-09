@@ -555,30 +555,24 @@ export function insertNoteByKey(noteName) {
 // Public API: insert rest
 // ---------------------------------------------------------------------------
 
-/** Insert a rest with the current duration at the selection position. */
+/** Replace the selected note with a rest of the same duration. */
 export function insertRest() {
   if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
 
   const score = getScore();
   const sel = _primarySel();
+  if (!sel) return;
 
-  const staffIndex = sel ? sel.staffIndex : editorState.currentStaff;
-  let measureIndex = sel ? sel.measureIndex : 0;
-  let noteIndex = sel ? sel.noteIndex + 1 : 0;
-
-  const numMeasures = score.staves[staffIndex].measures.length;
-  if (measureIndex >= numMeasures) measureIndex = numMeasures - 1;
-
-  const rest = createRest(editorState.currentDuration);
+  const measure = score.staves[sel.staffIndex].measures[sel.measureIndex];
+  const note = measure.notes[sel.noteIndex];
+  if (!note || note.type === 'rest') return;
 
   _pushUndoIfAvailable();
 
-  const added = addNote(score, staffIndex, measureIndex, noteIndex, rest);
-
-  if (added) {
-    setSelection([{ staffIndex, measureIndex, noteIndex }]);
-    _notifyChange();
-  }
+  const rest = createRest(note.duration);
+  if (note.dotted) rest.dotted = true;
+  replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, rest);
+  _notifyChange();
 }
 
 // ---------------------------------------------------------------------------
