@@ -864,7 +864,7 @@ export function changeDurationOfSelected(newDuration) {
   for (const sel of allSel) {
     const measure = score.staves[sel.staffIndex].measures[sel.measureIndex];
     const note = measure.notes[sel.noteIndex];
-    if (!note || note.duration === newDuration) continue;
+    if (!note || note.type === 'rest' || note.duration === newDuration) continue;
 
     const newNote = { ...note, keys: [...note.keys], duration: newDuration };
     if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
