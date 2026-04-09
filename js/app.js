@@ -4,7 +4,7 @@ import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } fr
 import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume, getScoreDuration } from './playback.js';
 import {
   initEditor, getEditorState, setDuration, toggleAccidental,
-  toggleRestMode, toggleDynamics, toggleInsertMode, toggleOverwriteMode, toggleDotMode,
+  toggleRestMode, toggleDynamics, toggleInsertMode, toggleOverwriteMode, toggleDotMode, insertRest,
   handleScoreClick,
   insertNoteByKey, insertNoteBeforeByKey, deleteSelectedNote, navigateSelection,
   changeOctave, toggleTie, switchStaff, getGhostNoteInfo,
@@ -493,8 +493,7 @@ function setupKeyboard() {
 
     if (!ctrl && !shift && key === 'r') {
       e.preventDefault();
-      toggleRestMode();
-      syncToolbar();
+      insertRest();
       return;
     }
 

@@ -552,6 +552,36 @@ export function insertNoteByKey(noteName) {
 }
 
 // ---------------------------------------------------------------------------
+// Public API: insert rest
+// ---------------------------------------------------------------------------
+
+/** Insert a rest with the current duration at the selection position. */
+export function insertRest() {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
+
+  const score = getScore();
+  const sel = _primarySel();
+
+  const staffIndex = sel ? sel.staffIndex : editorState.currentStaff;
+  let measureIndex = sel ? sel.measureIndex : 0;
+  let noteIndex = sel ? sel.noteIndex + 1 : 0;
+
+  const numMeasures = score.staves[staffIndex].measures.length;
+  if (measureIndex >= numMeasures) measureIndex = numMeasures - 1;
+
+  const rest = createRest(editorState.currentDuration);
+
+  _pushUndoIfAvailable();
+
+  const added = addNote(score, staffIndex, measureIndex, noteIndex, rest);
+
+  if (added) {
+    setSelection([{ staffIndex, measureIndex, noteIndex }]);
+    _notifyChange();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Public API: insert note before selected (Alt+letter)
 // ---------------------------------------------------------------------------
 
