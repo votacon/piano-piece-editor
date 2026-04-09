@@ -531,12 +531,37 @@ export function insertNoteByKey(noteName) {
 
       _pushUndoIfAvailable();
 
-      // Remove the selected rest
-      selMeasure.notes.splice(sel.noteIndex, 1);
+      // Try direct replace first
+      if (replaceNote(score, staffIndex, sel.measureIndex, sel.noteIndex, note)) {
+        fillMeasureWithRests(selMeasure, score.timeSignature.beats);
+        setSelection([{ staffIndex, measureIndex: sel.measureIndex, noteIndex: sel.noteIndex }]);
+        _recordAction('insertNote', { noteName: name });
+        _notifyChange();
+        return;
+      }
 
-      // Use addNote which handles making room by removing adjacent rests
-      const added = addNote(score, staffIndex, sel.measureIndex, sel.noteIndex, note);
-      if (added) {
+      // If note is bigger than the rest (e.g. dotted), trim adjacent rests to fit
+      let newNoteDur = DURATION_VALUES[note.duration] || 0;
+      if (note.dotted) newNoteDur *= 1.5;
+      let oldRestDur = DURATION_VALUES[selNote.duration] || 0;
+      if (selNote.dotted) oldRestDur *= 1.5;
+      let deficit = newNoteDur - oldRestDur;
+
+      // Remove adjacent rests after the selected one to free up beats
+      let idx = sel.noteIndex + 1;
+      while (deficit > 0.001 && idx < selMeasure.notes.length) {
+        if (selMeasure.notes[idx].type === 'rest') {
+          let rd = DURATION_VALUES[selMeasure.notes[idx].duration] || 0;
+          if (selMeasure.notes[idx].dotted) rd *= 1.5;
+          deficit -= rd;
+          selMeasure.notes.splice(idx, 1);
+        } else {
+          break;
+        }
+      }
+
+      if (deficit <= 0.001) {
+        selMeasure.notes[sel.noteIndex] = { ...note, keys: [...note.keys] };
         fillMeasureWithRests(selMeasure, score.timeSignature.beats);
         setSelection([{ staffIndex, measureIndex: sel.measureIndex, noteIndex: sel.noteIndex }]);
         _recordAction('insertNote', { noteName: name });
