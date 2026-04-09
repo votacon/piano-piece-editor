@@ -1,5 +1,5 @@
 // app.js — Bootstrap, orchestration, toolbar wiring, keyboard shortcuts
-import { createScore, cloneScore, addMeasure, removeMeasure } from './score-model.js';
+import { createScore, addMeasure, removeMeasure } from './score-model.js';
 import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } from './renderer.js';
 import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume, getScoreDuration } from './playback.js';
 import {

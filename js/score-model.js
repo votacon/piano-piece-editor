@@ -13,9 +13,9 @@ export const DURATION_VALUES = {
   '16': 0.25 // sixteenth
 };
 
-export const DURATIONS = ['w', 'h', 'q', '8', '16'];
-export const ACCIDENTALS = ['#', 'b', 'n'];
-export const DYNAMICS = ['pp', 'p', 'mp', 'mf', 'f', 'ff'];
+const DURATIONS = ['w', 'h', 'q', '8', '16'];
+const ACCIDENTALS = ['#', 'b', 'n'];
+const DYNAMICS = ['pp', 'p', 'mp', 'mf', 'f', 'ff'];
 export const NOTE_NAMES = ['c', 'd', 'e', 'f', 'g', 'a', 'b'];
 
 export function createNote(keys, duration, options = {}) {
@@ -43,7 +43,7 @@ export function createRest(duration) {
   return createNote(['b/4'], duration, { type: 'rest' });
 }
 
-export function createEmptyMeasure() {
+function createEmptyMeasure() {
   return {
     notes: [createRest('w')]
   };
@@ -55,14 +55,6 @@ export function measureDuration(measure) {
     if (note.dotted) dur *= 1.5;
     return sum + dur;
   }, 0);
-}
-
-export function isMeasureFull(measure, beats) {
-  return measureDuration(measure) >= beats;
-}
-
-export function remainingBeats(measure, beats) {
-  return Math.max(0, beats - measureDuration(measure));
 }
 
 export function createScore(options = {}) {
@@ -407,10 +399,6 @@ export function midiToKey(midi, preferFlat = false) {
 
 export function midiToFrequency(midi) {
   return 440 * Math.pow(2, (midi - 69) / 12);
-}
-
-export function getMeasureCount(score) {
-  return score.staves[0].measures.length;
 }
 
 export function yToKey(yOnStaff, clef, lineSpacing = 10) {
