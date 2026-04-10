@@ -10,7 +10,7 @@ const LAYOUT = {
   topPadding: 20,
   staffWidth: 250,
   firstMeasureExtra: 80,
-  trebleBassGap: 80,
+  trebleBassGap: 30,
   systemGap: 60,
   staffHeight: 100,
   measuresPerLine: 3,

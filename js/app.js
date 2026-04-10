@@ -17,6 +17,7 @@ import {
   enterChordMode, exitChordMode, isChordMode
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON, loadUserPrefs, saveUserPrefs } from './storage.js';
+import { exportScoreAsPNG, exportScoreAsPDF } from './export.js';
 import { pushState, undo as undoAction, redo as redoAction, clearHistory, canUndo, canRedo } from './undo-redo.js';
 
 const state = {
@@ -806,8 +807,40 @@ function setupFileActions() {
   document.getElementById('btn-load').addEventListener('click', () => {
     showLoadDialog();
   });
-  document.getElementById('btn-export').addEventListener('click', () => {
-    exportScoreAsJSON(state.score);
+  // Export dropdown (JSON / PNG / PDF)
+  const exportBtn = document.getElementById('btn-export');
+  const exportMenu = document.getElementById('export-menu');
+  const exportDropdown = document.getElementById('export-dropdown');
+
+  exportBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    exportMenu.hidden = !exportMenu.hidden;
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!exportDropdown.contains(e.target)) {
+      exportMenu.hidden = true;
+    }
+  });
+
+  exportMenu.querySelectorAll('.dropdown-item').forEach(item => {
+    item.addEventListener('click', async () => {
+      exportMenu.hidden = true;
+      const type = item.dataset.export;
+      const container = document.getElementById('score-container');
+      try {
+        if (type === 'json') {
+          exportScoreAsJSON(state.score);
+        } else if (type === 'png') {
+          await exportScoreAsPNG(state.score, container);
+        } else if (type === 'pdf') {
+          await exportScoreAsPDF(state.score, container);
+        }
+      } catch (err) {
+        console.error('Export failed:', err);
+        alert('Falha ao exportar: ' + err.message);
+      }
+    });
   });
   document.getElementById('btn-import').addEventListener('click', () => {
     const input = document.createElement('input');

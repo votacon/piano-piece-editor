@@ -9,6 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=DM+Sans:opsz,wght@9..40,400..700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
   <script src="https://cdn.jsdelivr.net/npm/vexflow@4.2.5/build/cjs/vexflow.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
   <div id="app">
@@ -20,7 +21,14 @@
         <button id="btn-new" class="bar-btn" title="New Score">New</button>
         <button id="btn-save" class="bar-btn" title="Save">Save</button>
         <button id="btn-load" class="bar-btn" title="Load">Load</button>
-        <button id="btn-export" class="bar-btn" title="Export JSON">Export</button>
+        <div class="dropdown" id="export-dropdown">
+          <button id="btn-export" class="bar-btn" title="Exportar">Export ▾</button>
+          <div id="export-menu" class="dropdown-menu" hidden>
+            <button class="dropdown-item" data-export="json">JSON</button>
+            <button class="dropdown-item" data-export="png">PNG (imagem)</button>
+            <button class="dropdown-item" data-export="pdf">PDF</button>
+          </div>
+        </div>
         <button id="btn-import" class="bar-btn" title="Import JSON">Import</button>
         <a href="como-usar.html" target="_blank" class="bar-btn bar-link" title="Como usar">Como usar</a>
       </div>
