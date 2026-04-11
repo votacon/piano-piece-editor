@@ -57,6 +57,10 @@ export function measureDuration(measure) {
   }, 0);
 }
 
+export function isMeasureOverflowing(measure, beats) {
+  return measureDuration(measure) > beats + 0.001;
+}
+
 export function createScore(options = {}) {
   const title = options.title || 'Untitled';
   const composer = options.composer || 'Composer';
