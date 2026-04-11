@@ -1,4 +1,6 @@
 // renderer.js — VexFlow rendering of the score model to SVG
+import { isMeasureOverflowing } from './score-model.js';
+
 const VF = Vex.Flow;
 
 let vfRenderer = null;
@@ -16,6 +18,15 @@ const LAYOUT = {
   measuresPerLine: 3,
   maxWidth: 885,
 };
+
+function _isMeasureSelectedAndEmpty(score, staffIndex, measureIndex, selection) {
+  const measure = score.staves[staffIndex].measures[measureIndex];
+  if (!measure || !measure.notes || measure.notes.length > 0) return false;
+  if (!Array.isArray(selection)) {
+    return selection && selection.staffIndex === staffIndex && selection.measureIndex === measureIndex;
+  }
+  return selection.some(s => s.staffIndex === staffIndex && s.measureIndex === measureIndex);
+}
 
 export function initRenderer(container) {
   container.innerHTML = '';
@@ -63,6 +74,12 @@ export function renderScore(score, container, selection = null) {
       if (isLastMeasure) {
         trebleStave.setEndBarType(VF.Barline.type.END);
       }
+      const trebleMeasure = score.staves[0].measures[mi];
+      if (isMeasureOverflowing(trebleMeasure, score.timeSignature.beats)) {
+        trebleStave.setStyle({ strokeStyle: '#dc2626', fillStyle: '#dc2626' });
+      } else if (_isMeasureSelectedAndEmpty(score, 0, mi, selection)) {
+        trebleStave.setStyle({ strokeStyle: '#93c5fd', fillStyle: '#93c5fd' });
+      }
       trebleStave.setContext(vfContext).draw();
 
       const bassY = yOffset + LAYOUT.staffHeight + LAYOUT.trebleBassGap;
@@ -76,6 +93,12 @@ export function renderScore(score, container, selection = null) {
       }
       if (isLastMeasure) {
         bassStave.setEndBarType(VF.Barline.type.END);
+      }
+      const bassMeasure = score.staves[1].measures[mi];
+      if (isMeasureOverflowing(bassMeasure, score.timeSignature.beats)) {
+        bassStave.setStyle({ strokeStyle: '#dc2626', fillStyle: '#dc2626' });
+      } else if (_isMeasureSelectedAndEmpty(score, 1, mi, selection)) {
+        bassStave.setStyle({ strokeStyle: '#93c5fd', fillStyle: '#93c5fd' });
       }
       bassStave.setContext(vfContext).draw();
 
@@ -103,7 +126,17 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
   const staff = score.staves[staffIndex];
   const measure = staff.measures[measureIndex];
 
-  if (!measure || !measure.notes || measure.notes.length === 0) return;
+  if (!measure || !measure.notes || measure.notes.length === 0) {
+    // Empty-measure anchor for hit-testing and selection
+    noteElementMap.push({
+      staffIndex,
+      measureIndex,
+      noteIndex: 0,
+      staveNote: null,
+      stave,
+    });
+    return;
+  }
 
   const vfNotes = [];
 
@@ -156,8 +189,11 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
       vfNote.addModifier(annotation);
     }
 
+    const measureOverflow = isMeasureOverflowing(measure, score.timeSignature.beats);
     if (isSelected) {
       vfNote.setStyle({ fillStyle: '#2563eb', strokeStyle: '#2563eb' });
+    } else if (measureOverflow) {
+      vfNote.setStyle({ fillStyle: '#dc2626', strokeStyle: '#dc2626' });
     }
 
     vfNotes.push(vfNote);
