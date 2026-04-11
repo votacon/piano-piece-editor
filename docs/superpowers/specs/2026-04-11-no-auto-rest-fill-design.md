@@ -75,6 +75,17 @@ if (!measure || !measure.notes || measure.notes.length === 0) {
 - `changeDurationOfSelected()` linha 108: remover `fillMeasureWithRests()`.
 - `toggleDot()` linha 255: remover `fillMeasureWithRests()`.
 
+### `js/editor-clipboard.js`
+
+`pasteAtSelection()` tem várias chamadas a `fillMeasureWithRests()` e lógica que assume compassos sempre cheios. Simplificar:
+
+- **Remover** o branch "expand whole rest into individual rests" (linhas 88-95): compassos novos não terão mais whole-rest auto-fill.
+- **Remover** o `fillMeasureWithRests` defensivo dentro do loop de inserção (linhas 126-133): depois de inserir uma nota do clipboard, se o compasso passou do limite, move pro próximo compasso (cria um se preciso). Sem cap, sem fill. Se ficou abaixo, simplesmente continua inserindo no mesmo compasso até esgotar o clipboard.
+- **Remover** o bloco "rebalance affected measures" inteiro (linhas 137-154): no novo modelo, paste só insere; não preenche, não corta, não colapsa.
+- Manter import de `createRest` se ainda for usado em outros lugares; remover se não.
+
+A semântica nova do paste fica: "insira as notas do clipboard a partir da posição selecionada, indo pros próximos compassos quando o atual transbordar". Se o último compasso transbordar, ele fica vermelho (overflow visível).
+
 ### `js/editor-mouse.js`
 
 Adicionar terceiro passe ao `_hitTest()`:
@@ -103,7 +114,6 @@ Isso vai DEPOIS do segundo passe, então só dispara quando não houve hit em ne
 - `js/playback.js` — playback é nota a nota, ignora barras de compasso.
 - `js/storage.js` — formato JSON não muda.
 - `js/undo-redo.js` — clones via `JSON.parse(JSON.stringify())` continuam corretos.
-- `js/editor-clipboard.js`
 - `js/editor-navigation.js`
 - `js/editor-chord.js`
 - `js/export.js`
