@@ -451,34 +451,6 @@ html, body {
   box-shadow: 0 0 8px rgba(139, 46, 46, 0.4);
 }
 
-/* Ghost note preview on hover */
-.ghost-note {
-  position: absolute;
-  display: none;
-  pointer-events: none;
-  z-index: 5;
-  width: 11px;
-  height: 9px;
-  background: var(--accent);
-  border-radius: 50%;
-  opacity: 0.4;
-}
-
-.ghost-note-label {
-  position: absolute;
-  left: 16px;
-  top: -5px;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 600;
-  color: var(--accent);
-  white-space: nowrap;
-  opacity: 1;
-  background: rgba(250, 246, 237, 0.9);
-  padding: 1px 4px;
-  border-radius: 2px;
-}
-
 /* Drag-select box */
 .select-box {
   position: absolute;

@@ -203,8 +203,8 @@ export function repeatLastAction() {
 // ---------------------------------------------------------------------------
 
 export {
-  getGhostNoteInfo, getNotesInRect,
-  handleScoreClick, addToChordByClick
+  getNotesInRect,
+  handleScoreClick
 } from './editor-mouse.js';
 
 export {

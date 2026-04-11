@@ -7,8 +7,8 @@ import {
   toggleRestMode, toggleDynamics, toggleInsertMode, toggleOverwriteMode, toggleDotMode, insertRest,
   handleScoreClick,
   insertNoteByKey, insertNoteBeforeByKey, deleteSelectedNote, navigateSelection,
-  changeOctave, toggleTie, switchStaff, getGhostNoteInfo,
-  addToChord, addToChordByClick, getNotesInRect,
+  changeOctave, toggleTie, switchStaff,
+  addToChord, getNotesInRect,
   copySelection, cutSelection, pasteAtSelection,
   changeDurationOfSelected, changeAccidentalOfSelected, changeOctaveOfSelected,
   changePitchOfSelected, extendSelection, navigateToMeasure, selectMeasure,
@@ -235,8 +235,6 @@ function setupScoreClick() {
   // ── Mouse down: start drag ──
   container.addEventListener('mousedown', (e) => {
     if (state.isPlaying || e.button !== 0) return;
-    // Don't start drag on shift-click (chord add)
-    if (e.shiftKey && state.selection.length > 0) return;
 
     const c = svgCoords(e);
     if (!c) return;
@@ -245,13 +243,8 @@ function setupScoreClick() {
 
   // ── Mouse move: draw selection box ──
   container.addEventListener('mousemove', (e) => {
-    // Update ghost note when not dragging
-    if (!dragStart) {
-      updateGhost(e);
-      return;
-    }
+    if (!dragStart) return;
 
-    hideGhost();
     const cc = containerCoords(e);
     const dx = Math.abs(cc.cx - dragStart.cx);
     const dy = Math.abs(cc.cy - dragStart.cy);
@@ -271,13 +264,6 @@ function setupScoreClick() {
 
   // ── Mouse up: finalize selection ──
   container.addEventListener('mouseup', (e) => {
-    // Shift+click for chord — handle before dragStart check
-    // (mousedown skips dragStart when shift is held)
-    if (e.shiftKey && state.selection.length > 0 && !dragStart) {
-      addToChordByClick(e, getNoteElementMap());
-      return;
-    }
-
     if (!dragStart) return;
 
     const wasDrag = dragStart.moved;
@@ -313,46 +299,7 @@ function setupScoreClick() {
       hideSelectBox();
     }
     dragStart = null;
-    hideGhost();
   });
-
-  // ── Ghost note preview ──
-  let ghostEl = null;
-  let ghostLabel = null;
-
-  function ensureGhostEl() {
-    if (!ghostEl || !ghostEl.parentNode) {
-      ghostEl = document.createElement('div');
-      ghostEl.className = 'ghost-note';
-      ghostLabel = document.createElement('span');
-      ghostLabel.className = 'ghost-note-label';
-      ghostEl.appendChild(ghostLabel);
-      container.appendChild(ghostEl);
-    }
-  }
-
-  function updateGhost(e) {
-    if (state.isPlaying) { hideGhost(); return; }
-
-    const info = getGhostNoteInfo(e, getNoteElementMap());
-    if (!info) { hideGhost(); return; }
-
-    ensureGhostEl();
-    ghostEl.style.left = (info.x - 6) + 'px';
-    ghostEl.style.top = (info.snapY - 5) + 'px';
-    ghostEl.style.display = 'block';
-
-    const es = getEditorState();
-    const parts = info.key.split('/');
-    const noteName = parts[0].toUpperCase();
-    const octave = parts[1];
-    const acc = es.currentAccidental === '#' ? '#' : es.currentAccidental === 'b' ? 'b' : '';
-    ghostLabel.textContent = noteName + acc + octave;
-  }
-
-  function hideGhost() {
-    if (ghostEl) ghostEl.style.display = 'none';
-  }
 }
 
 function showToast(message) {
