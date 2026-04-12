@@ -6,7 +6,8 @@ import {
 import {
   getScore, getSelection, setSelection, onScoreChange,
   editorState,
-  _primarySel, _pushUndoIfAvailable, _notifyChange, _recordAction
+  _primarySel, _pushUndoIfAvailable, _notifyChange, _recordAction,
+  _compareSelectionOrder
 } from './editor.js';
 
 // ---------------------------------------------------------------------------
@@ -26,29 +27,63 @@ export function changeOctave(delta) {
 // ---------------------------------------------------------------------------
 
 /**
- * Toggle the "tied" property of the currently selected note.
- * A tie connects this note to the next note in the measure.
+ * Toggle the "tied" property of selected notes.
+ * With multiple notes selected, ties them all in a chain (except the last).
+ * A tie connects a note to the next note (even across measures).
  */
 export function toggleTie() {
   if (!getScore || !getSelection || !onScoreChange) return;
 
   const score = getScore();
-  const sel   = _primarySel();
-  if (!sel) return;
+  const allSel = getSelection();
+  if (!allSel || (Array.isArray(allSel) && allSel.length === 0)) return;
 
-  const { staffIndex, measureIndex, noteIndex } = sel;
-  const measure = score.staves[staffIndex].measures[measureIndex];
-  if (!measure) return;
+  const sels = Array.isArray(allSel) ? [...allSel] : [allSel];
 
-  const note = measure.notes[noteIndex];
-  if (!note || note.type === 'rest') return;
+  // Filter out rests and invalid entries
+  const valid = sels.filter(s => {
+    const m = score.staves[s.staffIndex].measures[s.measureIndex];
+    const n = m && m.notes[s.noteIndex];
+    return n && n.type !== 'rest';
+  });
+  if (valid.length === 0) return;
+
+  // Sort in document order
+  valid.sort(_compareSelectionOrder);
 
   _pushUndoIfAvailable();
 
-  const newNote = { ...note, keys: [...note.keys] };
-  newNote.tied = !note.tied;
+  if (valid.length === 1) {
+    // Single note: simple toggle
+    const s = valid[0];
+    const note = score.staves[s.staffIndex].measures[s.measureIndex].notes[s.noteIndex];
+    const newNote = { ...note, keys: [...note.keys] };
+    newNote.tied = !note.tied;
+    replaceNote(score, s.staffIndex, s.measureIndex, s.noteIndex, newNote);
+  } else {
+    // Multiple notes: tie all except the last in a chain.
+    // If all (except last) are already tied, untie all instead.
+    const allTied = valid.slice(0, -1).every(s => {
+      const n = score.staves[s.staffIndex].measures[s.measureIndex].notes[s.noteIndex];
+      return n.tied;
+    });
 
-  replaceNote(score, staffIndex, measureIndex, noteIndex, newNote);
+    for (let i = 0; i < valid.length; i++) {
+      const s = valid[i];
+      const note = score.staves[s.staffIndex].measures[s.measureIndex].notes[s.noteIndex];
+      const newNote = { ...note, keys: [...note.keys] };
+      if (allTied) {
+        // Untie all
+        newNote.tied = false;
+      } else {
+        // Tie all except last
+        newNote.tied = (i < valid.length - 1);
+      }
+      if (!newNote.tied) delete newNote.tied;
+      replaceNote(score, s.staffIndex, s.measureIndex, s.noteIndex, newNote);
+    }
+  }
+
   _notifyChange();
 }
 
