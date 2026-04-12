@@ -51,3 +51,4 @@ Toda edicao segue o fluxo:
 - Playback usa `requestAnimationFrame` para o cursor visual e `AudioContext.currentTime` para scheduling preciso. Playback toca cada nota pela sua duração própria, ignorando o limite de compassos (suporta overflow).
 - Chords sao notas com multiplas keys: `{ keys: ["c/4", "e/4", "g/4"], duration: "q" }`
 - Delete em nota com outras notas no compasso → vira pausa de mesma duração. Delete na única nota → compasso fica vazio. Delete em pausa explícita → some completamente.
+- Teclas de ferramenta (`1-5` duração, `S/-/N` acidente, `.` dotted) seguem o padrão **Shift = nota atual, sem Shift = futuro**. Sem Shift apenas define o valor para próximas notas; com Shift segurado modifica apenas a nota selecionada (no-op se não houver seleção). Detecção via `e.code` em `app.js` (no Mac, Shift e Option mudam `e.key`).
