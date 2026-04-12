@@ -16,7 +16,7 @@ const LAYOUT = {
   trebleBassGap: 30,
   systemGap: 60,
   staffHeight: 100,
-  measuresPerLine: 4,
+  measuresPerLine: 3,
   maxWidth: 885,
 };
 
