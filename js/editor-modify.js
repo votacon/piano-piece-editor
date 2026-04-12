@@ -1,7 +1,7 @@
 // editor-modify.js — In-place note modification (duration, accidental, octave, ties, transpose)
 import {
   replaceNote, parseKey, buildKey,
-  keyToMidi, midiToKey, fillMeasureWithRests
+  keyToMidi, midiToKey
 } from './score-model.js';
 import {
   getScore, getSelection, setSelection, onScoreChange,
@@ -105,7 +105,6 @@ export function changeDurationOfSelected(newDuration) {
 
     const newNote = { ...note, keys: [...note.keys], duration: newDuration };
     if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
-      fillMeasureWithRests(measure, score.timeSignature.beats);
       anyChanged = true;
     }
   }
@@ -252,7 +251,6 @@ export function toggleDot() {
     if (!newNote.dotted) delete newNote.dotted;
 
     if (replaceNote(score, sel.staffIndex, sel.measureIndex, sel.noteIndex, newNote)) {
-      fillMeasureWithRests(measure, score.timeSignature.beats);
       anyChanged = true;
     }
   }
