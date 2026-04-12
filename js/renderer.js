@@ -11,8 +11,8 @@ let _pendingTies = {};
 const LAYOUT = {
   leftPadding: 25,
   topPadding: 20,
-  staffWidth: 250,
-  firstMeasureExtra: 80,
+  staffWidth: 190,
+  firstMeasureExtra: 55,
   trebleBassGap: 30,
   systemGap: 60,
   staffHeight: 100,
