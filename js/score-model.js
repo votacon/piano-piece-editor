@@ -297,3 +297,15 @@ export function yToKey(yOnStaff, clef, lineSpacing = 10) {
   const name = NOTE_NAMES[noteIndex];
   return `${name}/${octave}`;
 }
+
+export function getEffectiveClef(score, staffIndex, measureIndex) {
+  const staff = score.staves[staffIndex];
+  for (let i = measureIndex; i >= 0; i--) {
+    if (staff.measures[i].clef) return staff.measures[i].clef;
+  }
+  return staff.clef;
+}
+
+export function setMeasureClef(score, staffIndex, measureIndex, clef) {
+  score.staves[staffIndex].measures[measureIndex].clef = clef;
+}

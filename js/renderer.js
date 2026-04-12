@@ -1,5 +1,5 @@
 // renderer.js — VexFlow rendering of the score model to SVG
-import { isMeasureOverflowing } from './score-model.js';
+import { isMeasureOverflowing, getEffectiveClef } from './score-model.js';
 
 const VF = Vex.Flow;
 
@@ -65,14 +65,32 @@ export function renderScore(score, container, selection = null) {
       let measWidth = LAYOUT.staffWidth;
       if (isFirstMeasure) measWidth += LAYOUT.firstMeasureExtra;
 
+      // Compute effective clefs for this measure
+      const trebleClef = getEffectiveClef(score, 0, mi);
+      const bassClef = getEffectiveClef(score, 1, mi);
+
+      // Add extra width for mid-line clef changes
+      if (!isFirstMeasure) {
+        const prevTrebleClef = getEffectiveClef(score, 0, mi - 1);
+        const prevBassClef = getEffectiveClef(score, 1, mi - 1);
+        if (trebleClef !== prevTrebleClef || bassClef !== prevBassClef) {
+          measWidth += 35;
+        }
+      }
+
       const trebleStave = new VF.Stave(xCursor, yOffset, measWidth);
       if (isFirstMeasure) {
-        trebleStave.addClef('treble');
+        trebleStave.addClef(trebleClef);
         if (isFirstLine) {
           trebleStave.addKeySignature(score.keySignature);
           trebleStave.addTimeSignature(timeSigStr);
         }
         trebleStave.setMeasure(mi + 1);
+      } else {
+        const prevTrebleClef = getEffectiveClef(score, 0, mi - 1);
+        if (trebleClef !== prevTrebleClef) {
+          trebleStave.addClef(trebleClef);
+        }
       }
       if (isLastMeasure) {
         trebleStave.setEndBarType(VF.Barline.type.END);
@@ -88,10 +106,15 @@ export function renderScore(score, container, selection = null) {
       const bassY = yOffset + LAYOUT.staffHeight + LAYOUT.trebleBassGap;
       const bassStave = new VF.Stave(xCursor, bassY, measWidth);
       if (isFirstMeasure) {
-        bassStave.addClef('bass');
+        bassStave.addClef(bassClef);
         if (isFirstLine) {
           bassStave.addKeySignature(score.keySignature);
           bassStave.addTimeSignature(timeSigStr);
+        }
+      } else {
+        const prevBassClef = getEffectiveClef(score, 1, mi - 1);
+        if (bassClef !== prevBassClef) {
+          bassStave.addClef(bassClef);
         }
       }
       if (isLastMeasure) {
@@ -143,6 +166,7 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
   }
 
   const vfNotes = [];
+  const effectiveClef = getEffectiveClef(score, staffIndex, measureIndex);
 
   for (let ni = 0; ni < measure.notes.length; ni++) {
     const noteData = measure.notes[ni];
@@ -155,17 +179,17 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
     const dottedSuffix = noteData.dotted ? 'd' : '';
 
     if (noteData.type === 'rest') {
-      const restKey = staff.clef === 'bass' ? 'd/3' : 'b/4';
+      const restKey = effectiveClef === 'bass' ? 'd/3' : 'b/4';
       vfNote = new VF.StaveNote({
         keys: [restKey],
         duration: noteData.duration + dottedSuffix + 'r',
-        clef: staff.clef,
+        clef: effectiveClef,
       });
     } else {
       vfNote = new VF.StaveNote({
         keys: noteData.keys,
         duration: noteData.duration + dottedSuffix,
-        clef: staff.clef,
+        clef: effectiveClef,
         auto_stem: true,
       });
 

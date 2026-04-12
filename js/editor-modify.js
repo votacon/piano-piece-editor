@@ -1,7 +1,8 @@
 // editor-modify.js — In-place note modification (duration, accidental, octave, ties, transpose)
 import {
   replaceNote, parseKey, buildKey,
-  keyToMidi, midiToKey
+  keyToMidi, midiToKey,
+  getEffectiveClef, setMeasureClef
 } from './score-model.js';
 import {
   getScore, getSelection, setSelection, onScoreChange,
@@ -295,4 +296,17 @@ export function toggleDot() {
     _notifyChange();
   }
   return anyChanged;
+}
+
+export function toggleMeasureClef() {
+  if (!getScore || !getSelection) return;
+  const score = getScore();
+  const sel = _primarySel();
+  if (!sel) return;
+
+  _pushUndoIfAvailable();
+  const current = getEffectiveClef(score, sel.staffIndex, sel.measureIndex);
+  const next = current === 'treble' ? 'bass' : 'treble';
+  setMeasureClef(score, sel.staffIndex, sel.measureIndex, next);
+  _notifyChange();
 }

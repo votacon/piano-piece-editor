@@ -36,6 +36,39 @@
   --font-score:   'Fraunces', 'Georgia', serif;
 }
 
+/* --- White theme override --- */
+[data-theme="white"] {
+  --paper:        #ffffff;
+  --paper-soft:   #f7f7f7;
+  --paper-deep:   #eeeeee;
+  --paper-edge:   #dddddd;
+
+  --ink:          #1a1a1a;
+  --ink-soft:     #333333;
+  --ink-muted:    #666666;
+  --ink-faded:    #999999;
+
+  --accent:       #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft:  rgba(37, 99, 235, 0.08);
+  --indigo:       #2563eb;
+  --gold:         #d97706;
+
+  --border:       #d1d5db;
+  --border-soft:  #e5e7eb;
+  --shadow-sm:    0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md:    0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg:    0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="white"] #app {
+  background: #ffffff;
+}
+
+[data-theme="white"] #score-area {
+  background: #ffffff;
+}
+
 /* --- Reset & Base --- */
 *, *::before, *::after {
   box-sizing: border-box;

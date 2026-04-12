@@ -1,5 +1,5 @@
 // app.js — Bootstrap, orchestration, toolbar wiring, keyboard shortcuts
-import { createScore, addMeasure, removeMeasure } from './score-model.js';
+import { createScore, addMeasure, removeMeasure, getEffectiveClef } from './score-model.js';
 import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } from './renderer.js';
 import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume, getScoreDuration, getTimeOffsetForPosition } from './playback.js';
 import {
@@ -14,7 +14,8 @@ import {
   changePitchOfSelected, extendSelection, navigateToMeasure, selectMeasure,
   navigateToStart, navigateToEnd, duplicateSelection, transposeSelection, goToMeasure,
   toggleDot, repeatLastAction,
-  enterChordMode, exitChordMode, isChordMode
+  enterChordMode, exitChordMode, isChordMode,
+  toggleMeasureClef
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON, loadUserPrefs, saveUserPrefs } from './storage.js';
 import { exportScoreAsPNG, exportScoreAsPDF } from './export.js';
@@ -27,6 +28,16 @@ const state = {
 };
 
 let lastSavedJSON = '';
+
+function applyTheme(theme) {
+  if (theme === 'white') {
+    document.documentElement.setAttribute('data-theme', 'white');
+  } else {
+    document.documentElement.removeAttribute('data-theme');
+  }
+  const btn = document.getElementById('btn-theme');
+  if (btn) btn.textContent = theme === 'white' ? 'Tema: Branco' : 'Tema: Sépia';
+}
 
 function autoSave() {
   const currentJSON = JSON.stringify(state.score);
@@ -80,7 +91,15 @@ function syncToolbar() {
   const statusOctave = document.getElementById('status-octave');
   if (statusOctave) statusOctave.textContent = es.currentOctave;
   const statusStaff = document.getElementById('status-staff');
-  if (statusStaff) statusStaff.textContent = es.currentStaff === 0 ? '\uD834\uDD1E' : '\uD834\uDD22';
+  if (statusStaff) {
+    const sel = state.selection[0];
+    if (sel) {
+      const eff = getEffectiveClef(state.score, sel.staffIndex, sel.measureIndex);
+      statusStaff.textContent = eff === 'treble' ? '\uD834\uDD1E' : '\uD834\uDD22';
+    } else {
+      statusStaff.textContent = es.currentStaff === 0 ? '\uD834\uDD1E' : '\uD834\uDD22';
+    }
+  }
 }
 
 function pushUndo() {
@@ -140,6 +159,9 @@ function setupToolbar() {
   });
   document.getElementById('btn-tie').addEventListener('click', () => {
     toggleTie();
+  });
+  document.getElementById('btn-clef').addEventListener('click', () => {
+    toggleMeasureClef();
   });
   document.getElementById('btn-insert').addEventListener('click', () => {
     toggleInsertMode();
@@ -469,6 +491,12 @@ function setupKeyboard() {
     if (!ctrl && !shift && key === 't') {
       e.preventDefault();
       toggleTie();
+      return;
+    }
+
+    if (!ctrl && !shift && key === 'k') {
+      e.preventDefault();
+      toggleMeasureClef();
       return;
     }
 
@@ -882,6 +910,14 @@ function setupFileActions() {
   document.getElementById('load-dialog-cancel').addEventListener('click', () => {
     document.getElementById('load-dialog').close();
   });
+
+  // Theme toggle
+  document.getElementById('btn-theme').addEventListener('click', () => {
+    const current = document.documentElement.getAttribute('data-theme');
+    const next = current === 'white' ? 'sepia' : 'white';
+    applyTheme(next);
+    saveUserPrefs({ theme: next });
+  });
 }
 
 function showLoadDialog() {
@@ -977,7 +1013,7 @@ function init() {
   setupFileActions();
   setupPlayback();
 
-  // Apply saved user preferences (volume, BPM)
+  // Apply saved user preferences (volume, BPM, theme)
   const prefs = loadUserPrefs();
   if (typeof prefs.volume === 'number') {
     document.getElementById('volume-slider').value = prefs.volume;
@@ -986,6 +1022,7 @@ function init() {
   if (typeof prefs.bpm === 'number' && prefs.bpm >= 20 && prefs.bpm <= 300) {
     state.score.tempo = prefs.bpm;
   }
+  applyTheme(prefs.theme || 'sepia');
 
   setInterval(autoSave, 30000);
 
