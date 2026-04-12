@@ -41,22 +41,27 @@ export function insertNoteByKey(noteName) {
     noteIndex    = -1; // append
   }
 
-  // If selected note is a rest, replace it instead of inserting after
+  // If selected note is a rest, replace it instead of inserting after.
+  // If the measure is empty (anchor selection), insert at index 0.
   if (sel && sel.staffIndex === staffIndex) {
     const selMeasure = score.staves[staffIndex].measures[sel.measureIndex];
-    const selNote = selMeasure && selMeasure.notes[sel.noteIndex];
-    if (selNote && selNote.type === 'rest') {
-      const key  = buildKey(name, editorState.currentAccidental, editorState.currentOctave);
-      const note = _buildNoteFromState(key);
+    if (selMeasure && selMeasure.notes.length === 0) {
+      noteIndex = 0;
+    } else {
+      const selNote = selMeasure && selMeasure.notes[sel.noteIndex];
+      if (selNote && selNote.type === 'rest') {
+        const key  = buildKey(name, editorState.currentAccidental, editorState.currentOctave);
+        const note = _buildNoteFromState(key);
 
-      _pushUndoIfAvailable();
+        _pushUndoIfAvailable();
 
-      if (replaceNote(score, staffIndex, sel.measureIndex, sel.noteIndex, note)) {
-        setSelection([{ staffIndex, measureIndex: sel.measureIndex, noteIndex: sel.noteIndex }]);
-        _recordAction('insertNote', { noteName: name });
-        _notifyChange();
+        if (replaceNote(score, staffIndex, sel.measureIndex, sel.noteIndex, note)) {
+          setSelection([{ staffIndex, measureIndex: sel.measureIndex, noteIndex: sel.noteIndex }]);
+          _recordAction('insertNote', { noteName: name });
+          _notifyChange();
+        }
+        return;
       }
-      return;
     }
   }
 
@@ -108,10 +113,21 @@ export function insertRest() {
   if (!sel) return;
 
   const measure = score.staves[sel.staffIndex].measures[sel.measureIndex];
-  const note = measure.notes[sel.noteIndex];
-  if (!note) return;
+  if (!measure) return;
 
   _pushUndoIfAvailable();
+
+  // Empty measure: insert a fresh rest at index 0
+  if (measure.notes.length === 0) {
+    const newRest = createRest(editorState.currentDuration);
+    measure.notes.push(newRest);
+    setSelection([{ staffIndex: sel.staffIndex, measureIndex: sel.measureIndex, noteIndex: 0 }]);
+    _notifyChange();
+    return;
+  }
+
+  const note = measure.notes[sel.noteIndex];
+  if (!note) return;
 
   if (note.type === 'rest') {
     // Replace rest with a rest of the currently selected duration
