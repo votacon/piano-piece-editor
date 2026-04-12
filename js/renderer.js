@@ -72,6 +72,7 @@ export function renderScore(score, container, selection = null) {
           trebleStave.addKeySignature(score.keySignature);
           trebleStave.addTimeSignature(timeSigStr);
         }
+        trebleStave.setMeasure(mi + 1);
       }
       if (isLastMeasure) {
         trebleStave.setEndBarType(VF.Barline.type.END);
