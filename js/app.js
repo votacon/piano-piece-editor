@@ -432,28 +432,16 @@ function setupKeyboard() {
       return;
     }
 
-    // Accidental keys: modify selected note + set future accidental
-    if (!ctrl && !shift && key === 's') {
+    // Accidental keys: Shift modifies selected; no Shift sets future accidental
+    const accCodeMap = { 'KeyS': '#', 'Minus': 'b', 'KeyN': 'n' };
+    if (!ctrl && !alt && accCodeMap[e.code]) {
       e.preventDefault();
-      if (hasSel) changeAccidentalOfSelected('#');
-      toggleAccidental('#');
-      syncToolbar();
-      return;
-    }
-
-    if (!ctrl && !shift && !alt && key === '-') {
-      e.preventDefault();
-      if (hasSel) changeAccidentalOfSelected('b');
-      toggleAccidental('b');
-      syncToolbar();
-      return;
-    }
-
-    if (!ctrl && !shift && key === 'n') {
-      e.preventDefault();
-      if (hasSel) changeAccidentalOfSelected('n');
-      toggleAccidental('n');
-      syncToolbar();
+      if (shift) {
+        if (hasSel) changeAccidentalOfSelected(accCodeMap[e.code]);
+      } else {
+        toggleAccidental(accCodeMap[e.code]);
+        syncToolbar();
+      }
       return;
     }
 
