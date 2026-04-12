@@ -150,14 +150,24 @@ export function removeNote(score, staffIndex, measureIndex, noteIndex) {
   const measure = staff.measures[measureIndex];
   if (noteIndex < 0 || noteIndex >= measure.notes.length) return false;
 
+  // Rule 1: only note in measure → measure becomes empty
+  if (measure.notes.length === 1) {
+    measure.notes = [];
+    return true;
+  }
+
   const removed = measure.notes[noteIndex];
 
-  // Replace the note with a rest of the same duration (preserves measure timing)
-  measure.notes[noteIndex] = createRest(removed.duration);
+  // Rule 2: removing an explicit rest → splice it away
+  if (removed.type === 'rest') {
+    measure.notes.splice(noteIndex, 1);
+    return true;
+  }
 
-  // Merge adjacent rests into larger rests where possible
-  _mergeAdjacentRests(measure, score.timeSignature.beats);
-
+  // Rule 3: removing a real note with siblings → replace with rest of same duration
+  const rest = createRest(removed.duration);
+  if (removed.dotted) rest.dotted = true;
+  measure.notes[noteIndex] = rest;
   return true;
 }
 
