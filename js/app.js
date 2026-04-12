@@ -472,12 +472,15 @@ function setupKeyboard() {
       return;
     }
 
-    // . — toggle dotted note
-    if (!ctrl && !shift && key === '.') {
+    // . — Shift toggles dot on selected; no Shift toggles dot mode for future
+    if (!ctrl && !alt && e.code === 'Period') {
       e.preventDefault();
-      if (hasSel) toggleDot();
-      toggleDotMode();
-      syncToolbar();
+      if (shift) {
+        if (hasSel) toggleDot();
+      } else {
+        toggleDotMode();
+        syncToolbar();
+      }
       return;
     }
 
