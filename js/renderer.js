@@ -6,6 +6,7 @@ const VF = Vex.Flow;
 let vfRenderer = null;
 let vfContext = null;
 let noteElementMap = [];
+let _pendingTies = {};
 
 const LAYOUT = {
   leftPadding: 25,
@@ -38,6 +39,7 @@ export function initRenderer(container) {
 export function renderScore(score, container, selection = null) {
   initRenderer(container);
   noteElementMap = [];
+  _pendingTies = {};
 
   const measureCount = score.staves[0].measures.length;
   const measuresPerLine = LAYOUT.measuresPerLine;
@@ -135,6 +137,7 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
       staveNote: null,
       stave,
     });
+    _pendingTies[staffIndex] = null;
     return;
   }
 
@@ -239,7 +242,26 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
     beam.setContext(vfContext).draw();
   }
 
-  // Draw ties
+  // Draw cross-measure tie from previous measure
+  if (_pendingTies[staffIndex]) {
+    try {
+      const firstNonRestIdx = vfNotes.findIndex((_, i) => measure.notes[i].type !== 'rest');
+      if (firstNonRestIdx >= 0) {
+        const tie = new VF.StaveTie({
+          first_note: _pendingTies[staffIndex],
+          last_note: vfNotes[firstNonRestIdx],
+          first_indices: [0],
+          last_indices: [0],
+        });
+        tie.setContext(vfContext).draw();
+      }
+    } catch (e) {
+      console.warn('Cross-measure tie render failed:', e);
+    }
+    _pendingTies[staffIndex] = null;
+  }
+
+  // Draw intra-measure ties
   for (let ni = 0; ni < measure.notes.length - 1; ni++) {
     if (measure.notes[ni].tied && !measure.notes[ni].type) {
       try {
@@ -254,6 +276,12 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
         console.warn('Tie render failed:', e);
       }
     }
+  }
+
+  // Store pending tie if last note is tied (for cross-measure connection)
+  const lastNoteData = measure.notes[measure.notes.length - 1];
+  if (lastNoteData && lastNoteData.tied && lastNoteData.type !== 'rest') {
+    _pendingTies[staffIndex] = vfNotes[vfNotes.length - 1];
   }
 }
 
