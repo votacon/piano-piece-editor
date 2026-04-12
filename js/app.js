@@ -1,7 +1,7 @@
 // app.js — Bootstrap, orchestration, toolbar wiring, keyboard shortcuts
 import { createScore, addMeasure, removeMeasure } from './score-model.js';
 import { renderScore, getNoteElementMap, getNoteBoundingBox, getStaveBounds } from './renderer.js';
-import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume, getScoreDuration } from './playback.js';
+import { initPlayback, startPlayback, stopPlayback, getIsPlaying, setCursorPosition, setVolume, getScoreDuration, getTimeOffsetForPosition } from './playback.js';
 import {
   initEditor, getEditorState, setDuration, toggleAccidental,
   toggleRestMode, toggleDynamics, toggleInsertMode, toggleOverwriteMode, toggleDotMode, insertRest,
@@ -697,7 +697,9 @@ function togglePlayback() {
   } else {
     state.isPlaying = true;
     updatePlayButton(true);
-    startPlayback(state.score, container);
+    const sel = state.selection.length > 0 ? state.selection[0] : null;
+    const offset = sel ? getTimeOffsetForPosition(state.score, sel.staffIndex, sel.measureIndex, sel.noteIndex) : 0;
+    startPlayback(state.score, container, offset);
   }
 }
 

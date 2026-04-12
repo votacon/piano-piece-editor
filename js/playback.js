@@ -165,6 +165,24 @@ function playTone(frequency, startTime, duration, gain) {
   scheduledSources.push(osc);
 }
 
+export function getTimeOffsetForPosition(score, staffIndex, measureIndex, noteIndex) {
+  const secondsPerBeat = 60 / score.tempo;
+  const staff = score.staves[staffIndex];
+  if (!staff) return 0;
+  let beats = 0;
+  for (let mi = 0; mi <= measureIndex && mi < staff.measures.length; mi++) {
+    const measure = staff.measures[mi];
+    const limit = (mi === measureIndex) ? noteIndex : measure.notes.length;
+    for (let ni = 0; ni < limit; ni++) {
+      const note = measure.notes[ni];
+      let dur = DURATION_VALUES[note.duration] || 1;
+      if (note.dotted) dur *= 1.5;
+      beats += dur;
+    }
+  }
+  return beats * secondsPerBeat;
+}
+
 export function buildTimeline(score) {
   const events = [];
   const secondsPerBeat = 60 / score.tempo;
