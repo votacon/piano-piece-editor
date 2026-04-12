@@ -71,7 +71,23 @@ function _hitTest(event, noteElementMap) {
     } catch (_) {}
   }
 
-  return bestEntry;
+  if (bestEntry) return bestEntry;
+
+  // Third pass: empty-measure anchors (no staveNote, but stave covers the click)
+  for (const entry of noteElementMap) {
+    if (entry.staveNote !== null) continue;
+    if (!entry.stave) continue;
+    const staveX = entry.stave.getX();
+    const staveW = entry.stave.getWidth();
+    const staveY = entry.stave.getY();
+    const staveH = entry.stave.getHeight();
+    if (mx >= staveX && mx <= staveX + staveW &&
+        my >= staveY - staveH * 0.5 && my <= staveY + staveH * 1.5) {
+      return entry;
+    }
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
