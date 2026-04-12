@@ -419,13 +419,16 @@ function setupKeyboard() {
       return;
     }
 
-    // Duration keys 1-5: modify selected note + set future duration
-    const durMap = { '1': 'w', '2': 'h', '3': 'q', '4': '8', '5': '16' };
-    if (!ctrl && !shift && durMap[key]) {
+    // Duration keys 1-5: Shift modifies selected; no Shift sets future duration
+    const durCodeMap = { 'Digit1': 'w', 'Digit2': 'h', 'Digit3': 'q', 'Digit4': '8', 'Digit5': '16' };
+    if (!ctrl && !alt && durCodeMap[e.code]) {
       e.preventDefault();
-      if (hasSel) changeDurationOfSelected(durMap[key]);
-      setDuration(durMap[key]);
-      syncToolbar();
+      if (shift) {
+        if (hasSel) changeDurationOfSelected(durCodeMap[e.code]);
+      } else {
+        setDuration(durCodeMap[e.code]);
+        syncToolbar();
+      }
       return;
     }
 
