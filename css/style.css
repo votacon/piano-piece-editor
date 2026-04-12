@@ -802,6 +802,40 @@ dialog h3 {
   box-shadow: 0 4px 12px rgba(139, 46, 46, 0.15);
 }
 
+/* --- Go-to-measure overlay --- */
+.goto-measure-overlay {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  background: var(--sidebar);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-family: var(--font-mono, monospace);
+  font-size: 15px;
+  color: var(--text-primary);
+  z-index: 200;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.goto-measure-overlay span {
+  opacity: 0.5;
+  margin-right: 6px;
+}
+
+.goto-measure-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono, monospace);
+  font-size: 15px;
+  width: 80px;
+}
+
 /* --- Scrollbar Styling --- */
 #score-area::-webkit-scrollbar,
 #saved-scores-list::-webkit-scrollbar {

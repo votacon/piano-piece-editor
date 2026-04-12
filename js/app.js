@@ -12,7 +12,7 @@ import {
   copySelection, cutSelection, pasteAtSelection,
   changeDurationOfSelected, changeAccidentalOfSelected, changeOctaveOfSelected,
   changePitchOfSelected, extendSelection, navigateToMeasure, selectMeasure,
-  navigateToStart, navigateToEnd, duplicateSelection, transposeSelection,
+  navigateToStart, navigateToEnd, duplicateSelection, transposeSelection, goToMeasure,
   toggleDot, repeatLastAction,
   enterChordMode, exitChordMode, isChordMode
 } from './editor.js';
@@ -586,6 +586,13 @@ function setupKeyboard() {
       return;
     }
 
+    // / — go-to-measure mode
+    if (!ctrl && !shift && !alt && key === '/') {
+      e.preventDefault();
+      _showGoToMeasure();
+      return;
+    }
+
     // Enter — enter chord symbol mode
     if (!ctrl && !shift && !alt && key === 'Enter') {
       e.preventDefault();
@@ -620,6 +627,64 @@ function setupKeyboard() {
       return;
     }
   });
+}
+
+function _showGoToMeasure() {
+  const scoreArea = document.getElementById('score-area');
+
+  // Prevent opening multiple overlays
+  if (scoreArea.querySelector('.goto-measure-overlay')) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'goto-measure-overlay';
+
+  const label = document.createElement('span');
+  label.textContent = '/';
+
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.placeholder = 'Compasso...';
+  input.className = 'goto-measure-input';
+
+  overlay.appendChild(label);
+  overlay.appendChild(input);
+  scoreArea.appendChild(overlay);
+  input.focus();
+
+  function close() {
+    if (overlay.parentNode) overlay.remove();
+  }
+
+  input.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') {
+      ev.preventDefault();
+      const num = parseInt(input.value, 10);
+      close();
+      if (num > 0 && goToMeasure(num)) {
+        render();
+        // Scroll to make the measure visible
+        const sel = state.selection[0];
+        if (sel) {
+          const bounds = getStaveBounds(sel.staffIndex, num - 1);
+          if (bounds) {
+            scoreArea.scrollTop = Math.max(0, bounds.y - 50);
+          }
+        }
+      }
+      return;
+    }
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      close();
+      return;
+    }
+    // Allow only digits, Backspace, Delete, arrows
+    if (!/^\d$/.test(ev.key) && !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight'].includes(ev.key)) {
+      ev.preventDefault();
+    }
+  });
+
+  input.addEventListener('blur', close);
 }
 
 function togglePlayback() {

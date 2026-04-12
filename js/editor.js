@@ -216,7 +216,8 @@ export {
 export {
   navigateSelection, extendSelection,
   navigateToMeasure, selectMeasure,
-  navigateToStart, navigateToEnd
+  navigateToStart, navigateToEnd,
+  goToMeasure
 } from './editor-navigation.js';
 
 export {

@@ -160,6 +160,23 @@ export function navigateToStart() {
   _notifyChange();
 }
 
+/** Jump to the first note of a specific measure (1-based number). */
+export function goToMeasure(measureNum) {
+  if (!getScore || !getSelection || !setSelection || !onScoreChange) return false;
+
+  const score = getScore();
+  const sel = _primarySel();
+  const staffIndex = sel ? sel.staffIndex : editorState.currentStaff;
+  const staff = score.staves[staffIndex];
+
+  const idx = measureNum - 1;
+  if (idx < 0 || idx >= staff.measures.length) return false;
+
+  setSelection([{ staffIndex, measureIndex: idx, noteIndex: 0 }]);
+  _notifyChange();
+  return true;
+}
+
 /** Jump to the last note of the staff. */
 export function navigateToEnd() {
   if (!getScore || !getSelection || !setSelection || !onScoreChange) return;
