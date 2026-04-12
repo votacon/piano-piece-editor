@@ -45,7 +45,7 @@ export function createRest(duration) {
 
 function createEmptyMeasure() {
   return {
-    notes: [createRest('w')]
+    notes: []
   };
 }
 
@@ -103,57 +103,7 @@ export function addNote(score, staffIndex, measureIndex, noteIndex, note) {
   if (!staff || !staff.measures[measureIndex]) return false;
 
   const measure = staff.measures[measureIndex];
-  const beats = score.timeSignature.beats;
-
-  const currentDuration = measureDuration(measure);
-  let noteDuration = DURATION_VALUES[note.duration] || 0;
-  if (note.dotted) noteDuration *= 1.5;
-
-  // If measure has only a single whole rest, replace it
-  if (measure.notes.length === 1 &&
-      measure.notes[0].type === 'rest' &&
-      measure.notes[0].duration === 'w') {
-    measure.notes = [{ ...note, keys: [...note.keys] }];
-    fillMeasureWithRests(measure, beats);
-    return true;
-  }
-
-  let idx = noteIndex === -1 ? measure.notes.length : noteIndex;
-
-  // If measure is full, remove rests to make room for the new note
-  if (currentDuration + noteDuration > beats) {
-    const deficit = currentDuration + noteDuration - beats;
-    let freedBeats = 0;
-
-    // Remove rests starting at insertion point, going forward
-    let i = idx;
-    while (i < measure.notes.length && freedBeats < deficit) {
-      if (measure.notes[i].type === 'rest') {
-        freedBeats += DURATION_VALUES[measure.notes[i].duration] || 0;
-        measure.notes.splice(i, 1);
-      } else {
-        i++;
-      }
-    }
-
-    // If still not enough, remove rests before insertion point (nearest first)
-    for (let j = idx - 1; j >= 0 && freedBeats < deficit; j--) {
-      if (measure.notes[j].type === 'rest') {
-        freedBeats += DURATION_VALUES[measure.notes[j].duration] || 0;
-        measure.notes.splice(j, 1);
-        idx--;
-      }
-    }
-
-    if (freedBeats < deficit) {
-      return false; // not enough room even after removing all rests
-    }
-
-    idx = Math.min(idx, measure.notes.length);
-    measure.notes.splice(idx, 0, { ...note, keys: [...note.keys] });
-    fillMeasureWithRests(measure, beats);
-    return true;
-  }
+  const idx = noteIndex === -1 ? measure.notes.length : noteIndex;
 
   measure.notes.splice(idx, 0, { ...note, keys: [...note.keys] });
   return true;
