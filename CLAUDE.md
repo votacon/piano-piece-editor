@@ -45,7 +45,9 @@ Toda edicao segue o fluxo:
 ## Pontos de atencao
 
 - VexFlow e carregado via CDN no index.html — nao existe instalacao local
-- O `renderer.js` mantem um `noteElementMap` que mapeia elementos SVG → indices (stave, measure, note) para hit-testing de cliques
-- Overflow cascade em `insertNoteAt()`: ao inserir nota, excesso transborda para o compasso seguinte
-- Playback usa `requestAnimationFrame` para o cursor visual e `AudioContext.currentTime` para scheduling preciso
+- O `renderer.js` mantem um `noteElementMap` que mapeia elementos SVG → indices (stave, measure, note) para hit-testing de cliques. Compassos vazios entram no mapa como "ancoras" com `staveNote: null` para permitir seleção via clique.
+- Compassos podem estar **vazios** (`measure.notes === []`) ou em **overflow** (soma das durações > `timeSignature.beats`). Compassos em overflow são renderizados em vermelho como sinal visual — não há cascade automático para o próximo compasso. O usuário decide quando arrumar.
+- Mouse é selection-only: clique apenas seleciona; notas são adicionadas exclusivamente via teclado.
+- Playback usa `requestAnimationFrame` para o cursor visual e `AudioContext.currentTime` para scheduling preciso. Playback toca cada nota pela sua duração própria, ignorando o limite de compassos (suporta overflow).
 - Chords sao notas com multiplas keys: `{ keys: ["c/4", "e/4", "g/4"], duration: "q" }`
+- Delete em nota com outras notas no compasso → vira pausa de mesma duração. Delete na única nota → compasso fica vazio. Delete em pausa explícita → some completamente.
