@@ -15,7 +15,7 @@ import {
   navigateToStart, navigateToEnd, duplicateSelection, transposeSelection, goToMeasure,
   toggleDot, repeatLastAction,
   enterChordMode, exitChordMode, isChordMode,
-  toggleMeasureClef
+  toggleMeasureClef, toggleArpeggio
 } from './editor.js';
 import { saveScoreToStorage, loadScoreFromStorage, deleteScoreFromStorage, getAllScores, exportScoreAsJSON, loadUserPrefs, saveUserPrefs } from './storage.js';
 import { exportScoreAsPNG, exportScoreAsPDF } from './export.js';
@@ -162,6 +162,9 @@ function setupToolbar() {
   });
   document.getElementById('btn-clef').addEventListener('click', () => {
     toggleMeasureClef();
+  });
+  document.getElementById('btn-arpeggio').addEventListener('click', () => {
+    toggleArpeggio();
   });
   document.getElementById('btn-insert').addEventListener('click', () => {
     toggleInsertMode();
@@ -500,6 +503,12 @@ function setupKeyboard() {
       return;
     }
 
+    if (!ctrl && !shift && key === 'j') {
+      e.preventDefault();
+      toggleArpeggio();
+      return;
+    }
+
     // . — Shift toggles dot on selected; no Shift toggles dot mode for future
     if (!ctrl && !alt && e.code === 'Period') {
       e.preventDefault();
@@ -576,18 +585,30 @@ function setupKeyboard() {
       return;
     }
 
-    // Shift+Arrow Up/Down — change octave (of selected note + future input)
+    // Arrow Up/Down — change future input octave only
+    if (!shift && !ctrl && !alt && key === 'ArrowUp') {
+      e.preventDefault();
+      changeOctave(1);
+      syncToolbar();
+      return;
+    }
+    if (!shift && !ctrl && !alt && key === 'ArrowDown') {
+      e.preventDefault();
+      changeOctave(-1);
+      syncToolbar();
+      return;
+    }
+
+    // Shift+Arrow Up/Down — change octave of selected note only
     if (shift && !ctrl && !alt && key === 'ArrowUp') {
       e.preventDefault();
       if (hasSel) changeOctaveOfSelected(1);
-      changeOctave(1);
       syncToolbar();
       return;
     }
     if (shift && !ctrl && !alt && key === 'ArrowDown') {
       e.preventDefault();
       if (hasSel) changeOctaveOfSelected(-1);
-      changeOctave(-1);
       syncToolbar();
       return;
     }

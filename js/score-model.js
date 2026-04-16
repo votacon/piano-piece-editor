@@ -36,6 +36,9 @@ export function createNote(keys, duration, options = {}) {
   if (options.tied) {
     note.tied = true;
   }
+  if (options.arpeggio) {
+    note.arpeggio = options.arpeggio;
+  }
   return note;
 }
 

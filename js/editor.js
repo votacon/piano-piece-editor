@@ -224,7 +224,7 @@ export {
   changeOctave, toggleTie, switchStaff,
   changeDurationOfSelected, changeAccidentalOfSelected,
   changeOctaveOfSelected, transposeSelection, toggleDot,
-  toggleMeasureClef
+  toggleMeasureClef, toggleArpeggio
 } from './editor-modify.js';
 
 export {

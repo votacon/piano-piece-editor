@@ -1,7 +1,7 @@
 // editor-input.js — Note entry, deletion, and pitch replacement
 import {
   createRest, addNote, removeNote, replaceNote,
-  addKeyToNote, insertNoteAt,
+  addKeyToNote, removeKeyFromNote, insertNoteAt,
   NOTE_NAMES, buildKey
 } from './score-model.js';
 import {
@@ -201,7 +201,12 @@ export function addToChord(noteName) {
 
   _pushUndoIfAvailable();
 
-  if (addKeyToNote(score, staffIndex, measureIndex, noteIndex, newKey)) {
+  const note = score.staves[staffIndex].measures[measureIndex].notes[noteIndex];
+  if (note && !note.type && note.keys.includes(newKey)) {
+    if (removeKeyFromNote(score, staffIndex, measureIndex, noteIndex, newKey)) {
+      _notifyChange();
+    }
+  } else if (addKeyToNote(score, staffIndex, measureIndex, noteIndex, newKey)) {
     _notifyChange();
   }
 }

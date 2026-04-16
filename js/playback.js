@@ -217,6 +217,22 @@ export function buildTimeline(score) {
           prevEvent.duration += durationSeconds;
           prevEvent._tied = !!note.tied; // propagate tie chain correctly
         } else {
+          if (note.arpeggio && frequencies.length > 1) {
+          const arpDelay = 0.04; // 40ms between each note
+          const freqs = note.arpeggio === 'up' ? [...frequencies] : [...frequencies].reverse();
+          for (let fi = 0; fi < freqs.length; fi++) {
+            events.push({
+              time: time + fi * arpDelay,
+              duration: durationSeconds - fi * arpDelay,
+              frequencies: [freqs[fi]],
+              dynamics: note.dynamics || 'mf',
+              staffIndex: si,
+              measureIndex: mi,
+              noteIndex: ni,
+              _tied: fi === freqs.length - 1 ? !!note.tied : false,
+            });
+          }
+        } else {
           events.push({
             time,
             duration: durationSeconds,
@@ -227,6 +243,7 @@ export function buildTimeline(score) {
             noteIndex: ni,
             _tied: !!note.tied,
           });
+        }
         }
 
         time += durationSeconds;

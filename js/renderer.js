@@ -8,7 +8,7 @@ let vfContext = null;
 let noteElementMap = [];
 let _pendingTies = {};
 
-const LAYOUT = {
+export const LAYOUT = {
   leftPadding: 25,
   topPadding: 20,
   staffWidth: 250,
@@ -207,6 +207,14 @@ function renderMeasureNotes(score, staffIndex, measureIndex, stave, selection) {
     // Add dot modifier for dotted notes
     if (noteData.dotted) {
       VF.Dot.buildAndAttach([vfNote], { all: true });
+    }
+
+    // Arpeggio stroke
+    if (noteData.arpeggio && noteData.keys.length > 1) {
+      const strokeType = noteData.arpeggio === 'up'
+        ? VF.Stroke.Type.BRUSH_UP
+        : VF.Stroke.Type.BRUSH_DOWN;
+      vfNote.addModifier(new VF.Stroke(strokeType));
     }
 
     // Chord symbol annotation (treble staff only)

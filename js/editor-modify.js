@@ -89,6 +89,42 @@ export function toggleTie() {
 }
 
 // ---------------------------------------------------------------------------
+// Public API: toggle arpeggio
+// ---------------------------------------------------------------------------
+
+export function toggleArpeggio() {
+  if (!getScore || !getSelection || !onScoreChange) return;
+
+  const score = getScore();
+  const allSel = getSelection();
+  if (!allSel || (Array.isArray(allSel) && allSel.length === 0)) return;
+
+  const sels = Array.isArray(allSel) ? [...allSel] : [allSel];
+
+  const valid = sels.filter(s => {
+    const m = score.staves[s.staffIndex].measures[s.measureIndex];
+    const n = m && m.notes[s.noteIndex];
+    return n && n.type !== 'rest' && n.keys.length > 1;
+  });
+  if (valid.length === 0) return;
+
+  _pushUndoIfAvailable();
+
+  for (const s of valid) {
+    const note = score.staves[s.staffIndex].measures[s.measureIndex].notes[s.noteIndex];
+    const newNote = { ...note, keys: [...note.keys] };
+    if (note.arpeggio) {
+      delete newNote.arpeggio;
+    } else {
+      newNote.arpeggio = 'down';
+    }
+    replaceNote(score, s.staffIndex, s.measureIndex, s.noteIndex, newNote);
+  }
+
+  _notifyChange();
+}
+
+// ---------------------------------------------------------------------------
 // Public API: switch staff
 // ---------------------------------------------------------------------------
 

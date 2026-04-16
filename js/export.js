@@ -1,8 +1,9 @@
-// export.js — PNG and PDF export of the rendered score
+// export.js — PNG and PDF export of the rendered score (paginated)
+import { LAYOUT } from './renderer.js';
 
-const PAPER_COLOR = '#faf6ed';
-const INK_COLOR = '#1a1510';
-const INK_MUTED = '#6b5e4a';
+const PAPER_COLOR = '#ffffff';
+const INK_COLOR = '#000000';
+const INK_MUTED = '#555555';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -35,44 +36,96 @@ function _downloadBlob(blob, filename) {
 }
 
 /**
- * Build a self-contained SVG string that wraps the rendered score SVG with a
- * parchment background, title, and composer header.
- * @returns {{svg: string, width: number, height: number}}
+ * Build an array of page SVGs, each fitting A4 proportions.
+ * First page includes title & composer header; subsequent pages start with score lines.
  */
-function _buildFullSvg(score, scoreContainer) {
+function _buildPageSvgs(score, scoreContainer) {
   const innerSvg = scoreContainer.querySelector('svg');
   if (!innerSvg) throw new Error('Nenhuma partitura encontrada para exportar.');
 
-  const innerW = parseFloat(innerSvg.getAttribute('width')) || innerSvg.clientWidth || 885;
-  const innerH = parseFloat(innerSvg.getAttribute('height')) || innerSvg.clientHeight || 500;
+  const innerW = parseFloat(innerSvg.getAttribute('width')) || innerSvg.clientWidth || LAYOUT.maxWidth;
   const innerContent = innerSvg.innerHTML;
 
   const padding = 40;
+  const pageW = innerW + padding * 2;
+  // A4 proportions (297/210)
+  const pageH = pageW * (297 / 210);
+
+  // Header dimensions (first page only)
   const titleSize = 32;
   const composerSize = 14;
   const titleComposerGap = 10;
   const headerToScore = 40;
+  const headerH = titleSize + titleComposerGap + composerSize + headerToScore;
 
-  const headerH = padding + titleSize + titleComposerGap + composerSize + headerToScore;
-  const totalW = innerW + padding * 2;
-  const totalH = headerH + innerH + padding;
+  // Line (system) height from renderer layout
+  const lineHeight = LAYOUT.staffHeight + LAYOUT.trebleBassGap + LAYOUT.staffHeight + LAYOUT.systemGap;
 
-  const titleY = padding + titleSize;
-  const composerY = titleY + titleComposerGap + composerSize;
+  const measureCount = score.staves[0].measures.length;
+  const numLines = Math.ceil(measureCount / LAYOUT.measuresPerLine);
 
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${totalW}" height="${totalH}" viewBox="0 0 ${totalW} ${totalH}">` +
-      `<rect width="100%" height="100%" fill="${PAPER_COLOR}"/>` +
-      `<text x="${totalW / 2}" y="${titleY}" text-anchor="middle" ` +
+  // How many lines fit per page
+  const firstPageAvail = pageH - padding - headerH - padding;
+  const otherPageAvail = pageH - padding * 2;
+  const linesFirstPage = Math.max(1, Math.floor(firstPageAvail / lineHeight));
+  const linesPerPage = Math.max(1, Math.floor(otherPageAvail / lineHeight));
+
+  const pages = [];
+  let lineOffset = 0;
+  let pageNum = 0;
+
+  while (lineOffset < numLines) {
+    const isFirstPage = pageNum === 0;
+    const maxLines = isFirstPage ? linesFirstPage : linesPerPage;
+    const linesOnPage = Math.min(maxLines, numLines - lineOffset);
+
+    // Source Y range in the original SVG
+    const topMargin = isFirstPage ? 0 : 30; // extra space above for chord symbols
+    const srcY = LAYOUT.topPadding + lineOffset * lineHeight - topMargin;
+    const sliceH = linesOnPage * lineHeight - LAYOUT.systemGap + topMargin;
+
+    // Where to place the score slice on this page
+    const scoreY = isFirstPage ? padding + headerH : padding;
+    const contentH = scoreY + sliceH + padding;
+    const finalH = Math.min(pageH, contentH);
+
+    let svgParts = '';
+    svgParts += `<rect width="100%" height="100%" fill="${PAPER_COLOR}"/>`;
+
+    if (isFirstPage) {
+      const titleY = padding + titleSize;
+      const composerY = titleY + titleComposerGap + composerSize;
+      svgParts +=
+        `<text x="${pageW / 2}" y="${titleY}" text-anchor="middle" ` +
         `font-family="Georgia, 'Times New Roman', serif" font-size="${titleSize}" ` +
-        `font-weight="700" fill="${INK_COLOR}">${_escapeXml(score.title)}</text>` +
-      `<text x="${totalW / 2}" y="${composerY}" text-anchor="middle" ` +
+        `font-weight="700" fill="${INK_COLOR}">${_escapeXml(score.title)}</text>`;
+      svgParts +=
+        `<text x="${pageW / 2}" y="${composerY}" text-anchor="middle" ` +
         `font-family="Georgia, 'Times New Roman', serif" font-size="${composerSize}" ` +
-        `font-style="italic" fill="${INK_MUTED}">${_escapeXml(score.composer)}</text>` +
-      `<g transform="translate(${padding}, ${headerH})" fill="${INK_COLOR}" stroke="${INK_COLOR}" stroke-width="1">${innerContent}</g>` +
-    `</svg>`;
+        `font-style="italic" fill="${INK_MUTED}">${_escapeXml(score.composer)}</text>`;
+    }
 
-  return { svg, width: totalW, height: totalH };
+    // Use nested SVG with viewBox to clip to the relevant systems
+    svgParts +=
+      `<svg x="${padding}" y="${scoreY}" width="${innerW}" height="${sliceH}" ` +
+      `viewBox="0 ${srcY} ${innerW} ${sliceH}" overflow="hidden">` +
+      `<g fill="${INK_COLOR}" stroke="${INK_COLOR}" stroke-width="1">` +
+      innerContent +
+      `</g></svg>`;
+
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${pageW}" height="${finalH}" ` +
+      `viewBox="0 0 ${pageW} ${finalH}">` +
+      svgParts +
+      `</svg>`;
+
+    pages.push({ svg, width: pageW, height: finalH });
+
+    lineOffset += linesOnPage;
+    pageNum++;
+  }
+
+  return pages;
 }
 
 /**
@@ -96,7 +149,7 @@ function _svgToCanvas(svgString, width, height, scale = 2) {
       URL.revokeObjectURL(url);
       resolve(canvas);
     };
-    img.onerror = (e) => {
+    img.onerror = () => {
       URL.revokeObjectURL(url);
       reject(new Error('Falha ao renderizar SVG em imagem.'));
     };
@@ -109,16 +162,37 @@ function _svgToCanvas(svgString, width, height, scale = 2) {
 // ---------------------------------------------------------------------------
 
 /**
- * Export the current score as a PNG image.
- * @param {Object} score
- * @param {HTMLElement} scoreContainer  The #score-container element with the SVG
+ * Export the current score as a PNG image (paginated, pages stacked vertically).
  */
 export async function exportScoreAsPNG(score, scoreContainer) {
-  const { svg, width, height } = _buildFullSvg(score, scoreContainer);
-  const canvas = await _svgToCanvas(svg, width, height, 2);
+  const pages = _buildPageSvgs(score, scoreContainer);
+
+  const scale = 2;
+  const gap = 4;
+  const canvases = [];
+  for (const page of pages) {
+    canvases.push(await _svgToCanvas(page.svg, page.width, page.height, scale));
+  }
+
+  // Combine all pages into one tall image with a gap between them
+  const totalW = canvases[0].width;
+  const totalH = canvases.reduce((sum, c) => sum + c.height, 0) + (canvases.length - 1) * gap * scale;
+
+  const combined = document.createElement('canvas');
+  combined.width = totalW;
+  combined.height = totalH;
+  const ctx = combined.getContext('2d');
+  ctx.fillStyle = '#cccccc';
+  ctx.fillRect(0, 0, totalW, totalH);
+
+  let y = 0;
+  for (const c of canvases) {
+    ctx.drawImage(c, 0, y);
+    y += c.height + gap * scale;
+  }
 
   await new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
+    combined.toBlob((blob) => {
       if (!blob) return reject(new Error('Falha ao gerar PNG.'));
       _downloadBlob(blob, _sanitizeFilename(score.title) + '.png');
       resolve();
@@ -127,39 +201,41 @@ export async function exportScoreAsPNG(score, scoreContainer) {
 }
 
 /**
- * Export the current score as a PDF document (A4 portrait).
- * @param {Object} score
- * @param {HTMLElement} scoreContainer  The #score-container element with the SVG
+ * Export the current score as a multi-page PDF (A4 portrait).
  */
 export async function exportScoreAsPDF(score, scoreContainer) {
   if (!window.jspdf || !window.jspdf.jsPDF) {
     throw new Error('jsPDF não foi carregado.');
   }
 
-  const { svg, width, height } = _buildFullSvg(score, scoreContainer);
-  const canvas = await _svgToCanvas(svg, width, height, 2);
-  const imgData = canvas.toDataURL('image/png');
-
+  const pages = _buildPageSvgs(score, scoreContainer);
   const { jsPDF } = window.jspdf;
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
   const pageW = 210;
   const pageH = 297;
-  const margin = 15;
+  const margin = 10;
   const availW = pageW - margin * 2;
-  const availH = pageH - margin * 2;
 
-  // Preserve aspect ratio, fit within available area
-  const aspect = width / height;
-  let drawW = availW;
-  let drawH = drawW / aspect;
-  if (drawH > availH) {
-    drawH = availH;
-    drawW = drawH * aspect;
+  for (let i = 0; i < pages.length; i++) {
+    if (i > 0) pdf.addPage();
+
+    const page = pages[i];
+    const canvas = await _svgToCanvas(page.svg, page.width, page.height, 1.5);
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+    const aspect = page.width / page.height;
+    let drawW = availW;
+    let drawH = drawW / aspect;
+    if (drawH > pageH - margin * 2) {
+      drawH = pageH - margin * 2;
+      drawW = drawH * aspect;
+    }
+    const offsetX = (pageW - drawW) / 2;
+    const offsetY = margin;
+
+    pdf.addImage(imgData, 'JPEG', offsetX, offsetY, drawW, drawH);
   }
-  const offsetX = (pageW - drawW) / 2;
-  const offsetY = margin;
 
-  pdf.addImage(imgData, 'PNG', offsetX, offsetY, drawW, drawH);
   pdf.save(_sanitizeFilename(score.title) + '.pdf');
 }
